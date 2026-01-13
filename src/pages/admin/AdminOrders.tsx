@@ -1,17 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Printer, Eye, Clock, CheckCircle, XCircle, Truck } from 'lucide-react';
-import { useStore } from '@/contexts/StoreContext';
+import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2 } from 'lucide-react';
+import { useOrders } from '@/hooks/useOrders';
+import { useSettings } from '@/hooks/useSettings';
 import { Order, OrderStatus } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AdminOrders: React.FC = () => {
-  const { orders, updateOrderStatus } = useStore();
+  const { orders, loading, updateOrderStatus } = useOrders();
+  const { settings } = useSettings();
 
   // Only show confirmed orders (as per requirements)
   const confirmedOrders = orders.filter(o => o.status !== 'PENDING');
@@ -31,17 +34,32 @@ const AdminOrders: React.FC = () => {
     card: 'Cartão',
   };
 
-  const handleStatusChange = (orderId: string, status: OrderStatus) => {
-    updateOrderStatus(orderId, status);
-    toast.success(`Status atualizado para ${statusConfig[status].label}`);
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    await updateOrderStatus(orderId, status);
+  };
+
+  const handleWhatsApp = async (order: Order) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: { orderId: order.id, messageType: `order_${order.status.toLowerCase()}` },
+      });
+
+      if (error) throw error;
+
+      if (data.whatsappUrl) {
+        window.open(data.whatsappUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp:', error);
+      toast.error('Erro ao abrir WhatsApp');
+    }
   };
 
   const handlePrint = (order: Order) => {
-    // Create print content
     const printContent = `
       <html>
         <head>
-          <title>Pedido ${order.id}</title>
+          <title>Pedido ${order.id.substring(0, 8).toUpperCase()}</title>
           <style>
             body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; }
             h1 { font-size: 18px; text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
@@ -52,8 +70,8 @@ const AdminOrders: React.FC = () => {
           </style>
         </head>
         <body>
-          <h1>🍕 PIZZARIA ITALIANA</h1>
-          <div class="info"><strong>Pedido:</strong> ${order.id}</div>
+          <h1>🍕 ${settings.name}</h1>
+          <div class="info"><strong>Pedido:</strong> ${order.id.substring(0, 8).toUpperCase()}</div>
           <div class="info"><strong>Data:</strong> ${new Date(order.createdAt).toLocaleString('pt-BR')}</div>
           <div class="info"><strong>Cliente:</strong> ${order.customer.name}</div>
           <div class="info"><strong>Telefone:</strong> ${order.customer.phone}</div>
@@ -143,6 +161,14 @@ const AdminOrders: React.FC = () => {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -169,7 +195,7 @@ const AdminOrders: React.FC = () => {
                       {/* Order Info */}
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <span className="font-bold text-lg">{order.id}</span>
+                          <span className="font-bold text-lg">{order.id.substring(0, 8).toUpperCase()}</span>
                           <Badge className={`${status.color} text-white`}>
                             <StatusIcon className="w-3 h-3 mr-1" />
                             {status.label}
@@ -219,11 +245,20 @@ const AdminOrders: React.FC = () => {
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Pedido {order.id}</DialogTitle>
+                              <DialogTitle>Pedido {order.id.substring(0, 8).toUpperCase()}</DialogTitle>
                             </DialogHeader>
                             <OrderDetails order={order} />
                           </DialogContent>
                         </Dialog>
+
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => handleWhatsApp(order)}
+                          title="Enviar WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
 
                         <Button 
                           variant="outline" 

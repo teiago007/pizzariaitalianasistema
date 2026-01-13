@@ -14,16 +14,279 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          change_for: number | null
+          created_at: string
+          customer_address: string
+          customer_complement: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          items: Json
+          needs_change: boolean | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          pix_transaction_id: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          change_for?: number | null
+          created_at?: string
+          customer_address: string
+          customer_complement?: string | null
+          customer_name: string
+          customer_phone: string
+          id?: string
+          items: Json
+          needs_change?: boolean | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          pix_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          change_for?: number | null
+          created_at?: string
+          customer_address?: string
+          customer_complement?: string | null
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          items?: Json
+          needs_change?: boolean | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          pix_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pizza_borders: {
+        Row: {
+          available: boolean
+          created_at: string
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      pizza_flavors: {
+        Row: {
+          available: boolean
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          ingredients: string[] | null
+          name: string
+          price_g: number
+          price_gg: number
+          price_m: number
+          price_p: number
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string[] | null
+          name: string
+          price_g?: number
+          price_gg?: number
+          price_m?: number
+          price_p?: number
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string[] | null
+          name?: string
+          price_g?: number
+          price_gg?: number
+          price_m?: number
+          price_p?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pizzeria_settings: {
+        Row: {
+          accent_color: string
+          address: string
+          created_at: string
+          id: string
+          is_open: boolean
+          logo_url: string | null
+          name: string
+          pix_key: string | null
+          pix_name: string | null
+          primary_color: string
+          secondary_color: string
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          accent_color?: string
+          address?: string
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string | null
+          name?: string
+          pix_key?: string | null
+          pix_name?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Update: {
+          accent_color?: string
+          address?: string
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string | null
+          name?: string
+          pix_key?: string | null
+          pix_name?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          available: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      order_status:
+        | "PENDING"
+        | "CONFIRMED"
+        | "PREPARING"
+        | "READY"
+        | "DELIVERED"
+        | "CANCELLED"
+      payment_method: "pix" | "cash" | "card"
+      pizza_size: "P" | "M" | "G" | "GG"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +413,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      order_status: [
+        "PENDING",
+        "CONFIRMED",
+        "PREPARING",
+        "READY",
+        "DELIVERED",
+        "CANCELLED",
+      ],
+      payment_method: ["pix", "cash", "card"],
+      pizza_size: ["P", "M", "G", "GG"],
+    },
   },
 } as const
