@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff } from 'lucide-react';
-import { useAdmin } from '@/contexts/AdminContext';
+import { Lock, Eye, EyeOff, Mail } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,26 +11,36 @@ import { toast } from 'sonner';
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAdmin();
+  const { login, isAuthenticated, isAdmin } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && isAdmin) {
+      navigate('/admin/dashboard');
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast.error('Preencha email e senha');
+      return;
+    }
+
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = login(password);
-      setIsLoading(false);
+    const success = await login(email, password);
+    
+    setIsLoading(false);
 
-      if (success) {
-        toast.success('Login realizado com sucesso!');
-        navigate('/admin/dashboard');
-      } else {
-        toast.error('Senha incorreta');
-      }
-    }, 500);
+    if (success) {
+      navigate('/admin/dashboard');
+    }
   };
 
   return (
@@ -47,11 +57,26 @@ const AdminLoginPage: React.FC = () => {
             </div>
             <CardTitle className="font-display text-2xl">Área Administrativa</CardTitle>
             <CardDescription>
-              Digite a senha para acessar o painel
+              Faça login para acessar o painel
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <div className="relative mt-1.5">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@pizzaria.com"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="password">Senha</Label>
                 <div className="relative mt-1.5">
@@ -78,9 +103,12 @@ const AdminLoginPage: React.FC = () => {
               </Button>
             </form>
 
-            <p className="text-center text-xs text-muted-foreground mt-4">
-              Senha padrão: admin123
-            </p>
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground text-center">
+                <strong>Para criar um admin:</strong><br/>
+                Cadastre um usuário e adicione o role 'admin' na tabela user_roles
+              </p>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
