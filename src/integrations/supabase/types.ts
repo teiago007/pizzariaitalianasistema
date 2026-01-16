@@ -72,6 +72,10 @@ export type Database = {
           id: string
           name: string
           price: number
+          price_g: number | null
+          price_gg: number | null
+          price_m: number | null
+          price_p: number | null
         }
         Insert: {
           available?: boolean
@@ -79,6 +83,10 @@ export type Database = {
           id?: string
           name: string
           price?: number
+          price_g?: number | null
+          price_gg?: number | null
+          price_m?: number | null
+          price_p?: number | null
         }
         Update: {
           available?: boolean
@@ -86,6 +94,10 @@ export type Database = {
           id?: string
           name?: string
           price?: number
+          price_g?: number | null
+          price_gg?: number | null
+          price_m?: number | null
+          price_p?: number | null
         }
         Relationships: []
       }

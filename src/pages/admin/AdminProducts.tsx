@@ -44,6 +44,10 @@ const AdminProducts: React.FC = () => {
   const [borderForm, setBorderForm] = useState({
     name: '',
     price: 0,
+    price_p: 0,
+    price_m: 0,
+    price_g: 0,
+    price_gg: 0,
     available: true,
   });
 
@@ -300,6 +304,10 @@ const AdminProducts: React.FC = () => {
     setBorderForm({
       name: '',
       price: 0,
+      price_p: 0,
+      price_m: 0,
+      price_g: 0,
+      price_gg: 0,
       available: true,
     });
   };
@@ -343,6 +351,10 @@ const AdminProducts: React.FC = () => {
       setBorderForm({
         name: border.name,
         price: Number(border.price),
+        price_p: Number((border as any).price_p || border.price * 0.6),
+        price_m: Number((border as any).price_m || border.price * 0.8),
+        price_g: Number((border as any).price_g || border.price),
+        price_gg: Number((border as any).price_gg || border.price * 1.2),
         available: border.available,
       });
     } else {
@@ -394,8 +406,12 @@ const AdminProducts: React.FC = () => {
     saveBorderMutation.mutate({
       name: borderForm.name,
       price: borderForm.price,
+      price_p: borderForm.price_p,
+      price_m: borderForm.price_m,
+      price_g: borderForm.price_g,
+      price_gg: borderForm.price_gg,
       available: borderForm.available,
-    });
+    } as any);
   };
 
   const handleSaveProduct = () => {
@@ -801,8 +817,47 @@ const AdminProducts: React.FC = () => {
               />
             </div>
 
-            <div>
-              <Label>Preço Adicional</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Preço Tamanho P</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={borderForm.price_p}
+                  onChange={(e) => setBorderForm(f => ({ ...f, price_p: Number(e.target.value) }))}
+                />
+              </div>
+              <div>
+                <Label>Preço Tamanho M</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={borderForm.price_m}
+                  onChange={(e) => setBorderForm(f => ({ ...f, price_m: Number(e.target.value) }))}
+                />
+              </div>
+              <div>
+                <Label>Preço Tamanho G</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={borderForm.price_g}
+                  onChange={(e) => setBorderForm(f => ({ ...f, price_g: Number(e.target.value) }))}
+                />
+              </div>
+              <div>
+                <Label>Preço Tamanho GG</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={borderForm.price_gg}
+                  onChange={(e) => setBorderForm(f => ({ ...f, price_gg: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
+
+            <div className="hidden">
+              <Label>Preço Base (legado)</Label>
               <Input
                 type="number"
                 value={borderForm.price}
