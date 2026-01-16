@@ -140,6 +140,12 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     id: b.id,
     name: b.name,
     price: Number(b.price),
+    prices: {
+      P: Number(b.price_p || b.price * 0.6),
+      M: Number(b.price_m || b.price * 0.8),
+      G: Number(b.price_g || b.price),
+      GG: Number(b.price_gg || b.price * 1.2),
+    },
   })) || [];
 
   const products: Product[] = productsData?.map(p => ({

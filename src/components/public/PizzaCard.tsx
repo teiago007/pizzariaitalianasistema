@@ -44,7 +44,10 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
 
   const calculatePrice = () => {
     const flavorPrice = Math.max(...selectedFlavors.map(f => f.prices[selectedSize]));
-    const borderPrice = wantsBorder && selectedBorder ? selectedBorder.price : 0;
+    // Use size-specific border price if available
+    const borderPrice = wantsBorder && selectedBorder 
+      ? (selectedBorder.prices?.[selectedSize] || selectedBorder.price) 
+      : 0;
     return flavorPrice + borderPrice;
   };
 
@@ -227,15 +230,18 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
                   onValueChange={(v) => setSelectedBorder(borders.find(b => b.id === v))}
                   className="space-y-2"
                 >
-                  {borders.filter(b => b.price > 0).map((border) => (
-                    <div key={border.id} className="flex items-center space-x-3">
-                      <RadioGroupItem value={border.id} id={border.id} />
-                      <Label htmlFor={border.id} className="flex-1 cursor-pointer">
-                        <span>{border.name}</span>
-                        <span className="text-muted-foreground ml-2">+R$ {border.price.toFixed(2)}</span>
-                      </Label>
-                    </div>
-                  ))}
+                  {borders.filter(b => b.price > 0 || (b.prices && b.prices[selectedSize] > 0)).map((border) => {
+                    const borderPrice = border.prices?.[selectedSize] || border.price;
+                    return (
+                      <div key={border.id} className="flex items-center space-x-3">
+                        <RadioGroupItem value={border.id} id={border.id} />
+                        <Label htmlFor={border.id} className="flex-1 cursor-pointer">
+                          <span>{border.name}</span>
+                          <span className="text-muted-foreground ml-2">+R$ {borderPrice.toFixed(2)}</span>
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </RadioGroup>
               )}
             </div>
