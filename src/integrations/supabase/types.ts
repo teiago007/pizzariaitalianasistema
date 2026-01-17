@@ -101,9 +101,40 @@ export type Database = {
         }
         Relationships: []
       }
+      pizza_categories: {
+        Row: {
+          available: boolean
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pizza_flavors: {
         Row: {
           available: boolean
+          category_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -118,6 +149,7 @@ export type Database = {
         }
         Insert: {
           available?: boolean
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -132,6 +164,7 @@ export type Database = {
         }
         Update: {
           available?: boolean
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -144,7 +177,15 @@ export type Database = {
           price_p?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pizza_flavors_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "pizza_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pizzeria_settings: {
         Row: {

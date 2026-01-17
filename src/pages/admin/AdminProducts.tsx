@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tables } from '@/integrations/supabase/types';
+import PizzaCategoriesManager from '@/components/admin/PizzaCategoriesManager';
 
 type PizzaFlavor = Tables<'pizza_flavors'>;
 type PizzaBorder = Tables<'pizza_borders'>;
@@ -35,6 +37,7 @@ const AdminProducts: React.FC = () => {
     price_gg: 0,
     available: true,
     image_url: '',
+    category_id: '',
   });
   const [flavorImageFile, setFlavorImageFile] = useState<File | null>(null);
 
@@ -72,6 +75,19 @@ const AdminProducts: React.FC = () => {
         .from('pizza_flavors')
         .select('*')
         .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ['pizza-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pizza_categories')
+        .select('*')
+        .order('display_order');
       if (error) throw error;
       return data;
     },
@@ -295,6 +311,7 @@ const AdminProducts: React.FC = () => {
       price_gg: 0,
       available: true,
       image_url: '',
+      category_id: '',
     });
     setFlavorImageFile(null);
   };
@@ -338,6 +355,7 @@ const AdminProducts: React.FC = () => {
         price_gg: Number(flavor.price_gg),
         available: flavor.available,
         image_url: flavor.image_url || '',
+        category_id: (flavor as any).category_id || '',
       });
     } else {
       resetFlavorForm();
@@ -395,7 +413,8 @@ const AdminProducts: React.FC = () => {
       price_gg: flavorForm.price_gg,
       available: flavorForm.available,
       image_url: flavorForm.image_url,
-    });
+      category_id: flavorForm.category_id || null,
+    } as any);
   };
 
   const handleSaveBorder = () => {
@@ -457,8 +476,9 @@ const AdminProducts: React.FC = () => {
       </div>
 
       <Tabs defaultValue="pizzas" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="pizzas">🍕 Pizzas</TabsTrigger>
+          <TabsTrigger value="categorias">📂 Categorias</TabsTrigger>
           <TabsTrigger value="bordas">🧀 Bordas</TabsTrigger>
           <TabsTrigger value="outros">🥤 Outros</TabsTrigger>
         </TabsList>
@@ -538,6 +558,11 @@ const AdminProducts: React.FC = () => {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Categories Tab */}
+        <TabsContent value="categorias" className="space-y-4">
+          <PizzaCategoriesManager />
         </TabsContent>
 
         {/* Bordas Tab */}
@@ -708,6 +733,26 @@ const AdminProducts: React.FC = () => {
                 onChange={(e) => setFlavorForm(f => ({ ...f, ingredients: e.target.value }))}
                 placeholder="Ex: Tomate, Mussarela, Manjericão"
               />
+            </div>
+
+            <div>
+              <Label>Categoria</Label>
+              <Select
+                value={flavorForm.category_id}
+                onValueChange={(value) => setFlavorForm(f => ({ ...f, category_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sem categoria</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-4 gap-3">
