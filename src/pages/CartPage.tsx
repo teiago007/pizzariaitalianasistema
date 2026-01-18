@@ -1,15 +1,27 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, Clock } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useStore } from '@/contexts/StoreContext';
+import { useStoreAvailability } from '@/hooks/useStoreAvailability';
 import { CartItemPizza, CartItemProduct } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
+
+const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
+  if (!nextOpenAt) return undefined;
+  const d = new Date(`${nextOpenAt.date}T00:00:00-03:00`);
+  const dayLabel = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(d);
+  return `${dayLabel} ${nextOpenAt.time}`;
+};
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
+  const { settings } = useStore();
+  const { availability } = useStoreAvailability(settings.isOpen);
   const { items, removeItem, updateQuantity, total, clearCart } = useCart();
 
   const sizeLabels = {
@@ -178,6 +190,9 @@ const CartPage: React.FC = () => {
     );
   }
 
+  const nextOpenShort = formatNextOpenShort(availability.nextOpenAt);
+  const canCheckout = availability.isOpenNow;
+
   return (
     <div className="min-h-screen py-8 md:py-12">
       <div className="container mx-auto px-4 max-w-3xl">
@@ -227,11 +242,30 @@ const CartPage: React.FC = () => {
                 </div>
               </div>
 
+              {!canCheckout && (
+                <div className="mt-4 p-3 rounded-lg bg-muted/40 border border-border text-sm text-muted-foreground flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Não estamos aceitando pedidos agora.
+                  {nextOpenShort ? ` Próxima abertura: ${nextOpenShort}.` : ''}
+                </div>
+              )}
+
               <div className="mt-6 space-y-3">
                 <Button
                   size="lg"
                   className="w-full"
-                  onClick={() => navigate('/checkout')}
+                  onClick={() => {
+                    if (!canCheckout) {
+                      toast.error(
+                        nextOpenShort
+                          ? `Loja fechada. Próxima abertura: ${nextOpenShort}.`
+                          : 'Loja fechada no momento.'
+                      );
+                      return;
+                    }
+                    navigate('/checkout');
+                  }}
+                  disabled={!canCheckout}
                 >
                   Finalizar Pedido
                   <ArrowRight className="w-4 h-4 ml-2" />

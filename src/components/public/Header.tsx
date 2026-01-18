@@ -4,15 +4,54 @@ import { motion } from 'framer-motion';
 import { ShoppingCart, MapPin, Phone, Clock } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useStore } from '@/contexts/StoreContext';
+import { useStoreAvailability } from '@/hooks/useStoreAvailability';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+
+const formatNextOpen = (nextOpenAt?: { date: string; time: string }) => {
+  if (!nextOpenAt) return undefined;
+  const d = new Date(`${nextOpenAt.date}T00:00:00-03:00`);
+  const dayLabel = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(d);
+  return `${dayLabel} às ${nextOpenAt.time}`;
+};
 
 export const Header: React.FC = () => {
   const { itemCount } = useCart();
   const { settings } = useStore();
+  const { availability } = useStoreAvailability(settings.isOpen);
+
+  const nextOpenLabel = formatNextOpen(availability.nextOpenAt);
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+      {/* Status banner */}
+      <div className="border-b border-border bg-muted/40">
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              {availability.isOpenNow ? (
+                <span>
+                  <span className="font-medium text-foreground">Aberto agora</span>
+                  {availability.closesAt ? ` • fecha às ${availability.closesAt}` : null}
+                </span>
+              ) : (
+                <span>
+                  <span className="font-medium text-foreground">Fechado</span>
+                  {nextOpenLabel ? ` • abre ${nextOpenLabel}` : null}
+                </span>
+              )}
+            </div>
+
+            {availability.isOpenNow ? (
+              <Badge variant="default" className="bg-secondary text-secondary-foreground">Aberto</Badge>
+            ) : (
+              <Badge variant="destructive">Fechado</Badge>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4">
         {/* Top bar with info */}
         <div className="hidden md:flex items-center justify-between py-2 text-sm border-b border-border/50">
@@ -28,7 +67,7 @@ export const Header: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            {settings.isOpen ? (
+            {availability.isOpenNow ? (
               <Badge variant="default" className="bg-secondary text-secondary-foreground">
                 Aberto
               </Badge>
@@ -46,8 +85,8 @@ export const Header: React.FC = () => {
               className="w-12 h-12 rounded-full bg-primary flex items-center justify-center overflow-hidden"
             >
               {settings.logo ? (
-                <img 
-                  src={settings.logo} 
+                <img
+                  src={settings.logo}
                   alt={`Logo ${settings.name}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
@@ -101,7 +140,7 @@ export const Header: React.FC = () => {
             <MapPin className="w-3 h-3" />
             {settings.address.split('|')[0]}
           </span>
-          {settings.isOpen ? (
+          {availability.isOpenNow ? (
             <Badge variant="default" className="bg-secondary text-secondary-foreground text-xs">
               Aberto
             </Badge>
