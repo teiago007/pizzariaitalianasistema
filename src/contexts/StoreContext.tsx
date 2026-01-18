@@ -71,6 +71,20 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     },
   });
 
+  // Fetch pizza categories (used for optional fixed prices per size)
+  const { data: categoriesData } = useQuery({
+    queryKey: ['pizza-categories-public-prices'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pizza_categories')
+        .select('id,price_p,price_m,price_g,price_gg')
+        .eq('available', true);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Fetch pizza borders from database
   const { data: bordersData, isLoading: isLoadingBorders, refetch: refetchBorders } = useQuery({
     queryKey: ['pizza-borders'],
@@ -122,21 +136,45 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     accentColor: '#ffffff',
   };
 
-  const flavors: PizzaFlavor[] = flavorsData?.map(f => ({
-    id: f.id,
-    name: f.name,
-    description: f.description || '',
-    ingredients: f.ingredients || [],
-    image: f.image_url || undefined,
-    categoryId: f.category_id,
-    prices: {
-      P: Number(f.price_p),
-      M: Number(f.price_m),
-      G: Number(f.price_g),
-      GG: Number(f.price_gg),
-    },
-  })) || [];
+  const categoryPricesById = new Map<string, { P?: number; M?: number; G?: number; GG?: number }>(
+    (categoriesData || []).map((c: any) => [
+      c.id,
+      {
+        P: c.price_p == null ? undefined : Number(c.price_p),
+        M: c.price_m == null ? undefined : Number(c.price_m),
+        G: c.price_g == null ? undefined : Number(c.price_g),
+        GG: c.price_gg == null ? undefined : Number(c.price_gg),
+      },
+    ])
+  );
 
+  const flavors: PizzaFlavor[] =
+    flavorsData?.map((f: any) => {
+      const basePrices = {
+        P: Number(f.price_p),
+        M: Number(f.price_m),
+        G: Number(f.price_g),
+        GG: Number(f.price_gg),
+      };
+
+      const catPrices = f.category_id ? categoryPricesById.get(f.category_id) : undefined;
+      const prices = {
+        P: catPrices?.P ?? basePrices.P,
+        M: catPrices?.M ?? basePrices.M,
+        G: catPrices?.G ?? basePrices.G,
+        GG: catPrices?.GG ?? basePrices.GG,
+      };
+
+      return {
+        id: f.id,
+        name: f.name,
+        description: f.description || '',
+        ingredients: f.ingredients || [],
+        image: f.image_url || undefined,
+        categoryId: f.category_id,
+        prices,
+      };
+    }) || [];
   const borders: PizzaBorder[] = bordersData?.map(b => ({
     id: b.id,
     name: b.name,

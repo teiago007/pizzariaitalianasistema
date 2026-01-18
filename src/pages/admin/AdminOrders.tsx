@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2, Send, Trash2 } from 'lucide-react';
+import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2, Send, Trash2, Search } from 'lucide-react';
 import { useOrders } from '@/hooks/useOrders';
 import { useSettings } from '@/hooks/useSettings';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
@@ -8,16 +8,28 @@ import { Order, OrderStatus, CartItemPizza } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { startOfDay, endOfDay, subDays } from 'date-fns';
 
 const AdminOrders: React.FC = () => {
   const { orders, loading, updateOrderStatus, deleteOrder } = useOrders();
   const { settings } = useSettings();
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+
+  // Filtros + abas + paginação
+  const [tab, setTab] = useState<'today' | 'week' | 'all'>('today');
+  const [statusFilter, setStatusFilter] = useState<'__all__' | OrderStatus>('__all__');
+  const [phoneSearch, setPhoneSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   // Real-time notifications for new orders
   useOrderNotifications((newOrder) => {
@@ -32,8 +44,55 @@ const AdminOrders: React.FC = () => {
     }, 30000);
   });
 
-  // Exibir todos os pedidos (exceto pendentes), mas simplificar os status disponíveis conforme solicitado
-  const confirmedOrders = orders.filter(o => o.status !== 'PENDING');
+  // Exibir todos os pedidos (exceto pendentes)
+  const baseOrders = useMemo(() => orders.filter(o => o.status !== 'PENDING'), [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    if (tab === 'today') {
+      start = startOfDay(now);
+      end = endOfDay(now);
+    } else if (tab === 'week') {
+      start = startOfDay(subDays(now, 6));
+      end = endOfDay(now);
+    } else {
+      // aba "Todos": usa período manual se o usuário preencher
+      if (dateFrom) start = startOfDay(new Date(dateFrom + 'T00:00:00'));
+      if (dateTo) end = endOfDay(new Date(dateTo + 'T00:00:00'));
+    }
+
+    const phone = phoneSearch.trim();
+
+    return baseOrders.filter((o) => {
+      if (statusFilter !== '__all__' && o.status !== statusFilter) return false;
+
+      if (phone) {
+        const normalized = (s: string) => s.replace(/\D/g, '');
+        if (!normalized(o.customer.phone).includes(normalized(phone))) return false;
+      }
+
+      if (start && o.createdAt < start) return false;
+      if (end && o.createdAt > end) return false;
+
+      return true;
+    });
+  }, [baseOrders, tab, statusFilter, phoneSearch, dateFrom, dateTo]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  const pagedOrders = useMemo(() => {
+    const safePage = Math.min(Math.max(page, 1), totalPages);
+    const startIdx = (safePage - 1) * pageSize;
+    return filteredOrders.slice(startIdx, startIdx + pageSize);
+  }, [filteredOrders, page, totalPages]);
+
+  // reset de página ao mudar filtros
+  React.useEffect(() => {
+    setPage(1);
+  }, [tab, statusFilter, phoneSearch, dateFrom, dateTo]);
 
   const statusConfig: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
     PENDING: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock },
@@ -236,170 +295,235 @@ const AdminOrders: React.FC = () => {
         <p className="text-muted-foreground">Gerencie os pedidos confirmados</p>
       </div>
 
-      {confirmedOrders.length > 0 ? (
-        <div className="space-y-4">
-          {confirmedOrders.map((order, index) => {
-            const status = statusConfig[order.status];
-            const StatusIcon = status.icon;
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+        <div className="flex flex-col gap-4">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="today">Hoje</TabsTrigger>
+            <TabsTrigger value="week">Semana</TabsTrigger>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+          </TabsList>
 
-            const isNew = newOrderIds.has(order.id);
-
-            return (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className={isNew ? 'ring-2 ring-secondary ring-offset-2 bg-secondary/5 animate-pulse' : ''}>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                      {/* Order Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          {isNew && (
-                            <Badge className="bg-secondary text-secondary-foreground animate-bounce">
-                              NOVO!
-                            </Badge>
-                          )}
-                          <span className="font-bold text-lg">{order.id.substring(0, 8).toUpperCase()}</span>
-                          <Badge className={`${status.color} text-white`}>
-                            <StatusIcon className="w-3 h-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {order.customer.name} • {order.customer.phone}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(order.createdAt).toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-
-                      {/* Price */}
-                      <div className="text-right lg:text-center">
-                        <p className="text-2xl font-bold text-primary">
-                          R$ {order.total.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.items.length} {order.items.length === 1 ? 'item' : 'itens'}
-                        </p>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Select
-                          value={order.status}
-                          onValueChange={(value) => handleStatusChange(order.id, value as OrderStatus)}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="CONFIRMED">Confirmado</SelectItem>
-                            <SelectItem value="READY">Pronto</SelectItem>
-                            <SelectItem value="CANCELLED">Cancelado</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        {/* Out for delivery button */}
-                        {(order.status === 'CONFIRMED' || order.status === 'PREPARING' || order.status === 'READY') && (
-                          <Button 
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleOutForDelivery(order)}
-                            className="gap-1"
-                            title="Avisar saída para entrega"
-                          >
-                            <Send className="w-4 h-4" />
-                            <span className="hidden sm:inline">Saindo</span>
-                          </Button>
-                        )}
-
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Pedido {order.id.substring(0, 8).toUpperCase()}</DialogTitle>
-                            </DialogHeader>
-                            <OrderDetails order={order} />
-                          </DialogContent>
-                        </Dialog>
-
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => handleWhatsApp(order)}
-                          title="Enviar WhatsApp"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </Button>
-
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => handlePrint(order)}
-                          title="Imprimir pedido"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </Button>
-
-                        {/* Delete Order Button */}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              title="Remover pedido"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remover Pedido?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja remover o pedido {order.id.substring(0, 8).toUpperCase()}? 
-                                Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDeleteOrder(order.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Remover
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
-              <Clock className="w-8 h-8 text-muted-foreground" />
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+            <div className="lg:col-span-2 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={phoneSearch}
+                onChange={(e) => setPhoneSearch(e.target.value)}
+                placeholder="Buscar por telefone"
+                className="pl-9"
+              />
             </div>
-            <p className="text-muted-foreground">Nenhum pedido confirmado ainda</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Os pedidos aparecerão aqui após o pagamento ser confirmado
-            </p>
-          </CardContent>
-        </Card>
-      )}
+
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos os status</SelectItem>
+                <SelectItem value="CONFIRMED">Confirmado</SelectItem>
+                <SelectItem value="READY">Pronto</SelectItem>
+                <SelectItem value="CANCELLED">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                disabled={tab !== 'all'}
+                title="Data inicial (somente na aba Todos)"
+              />
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                disabled={tab !== 'all'}
+                title="Data final (somente na aba Todos)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <TabsContent value={tab} className="mt-4">
+          {pagedOrders.length > 0 ? (
+            <>
+              <div className="space-y-4">
+                {pagedOrders.map((order, index) => {
+                  const status = statusConfig[order.status];
+                  const StatusIcon = status.icon;
+                  const isNew = newOrderIds.has(order.id);
+
+                  return (
+                    <motion.div
+                      key={order.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card className={isNew ? 'ring-2 ring-secondary ring-offset-2 bg-secondary/5 animate-pulse' : ''}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                            {/* Order Info */}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                {isNew && (
+                                  <Badge className="bg-secondary text-secondary-foreground animate-bounce">
+                                    NOVO!
+                                  </Badge>
+                                )}
+                                <span className="font-bold text-lg">{order.id.substring(0, 8).toUpperCase()}</span>
+                                <Badge className={`${status.color} text-white`}>
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {status.label}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {order.customer.name} • {order.customer.phone}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(order.createdAt).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+
+                            {/* Price */}
+                            <div className="text-right lg:text-center">
+                              <p className="text-2xl font-bold text-primary">R$ {order.total.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {order.items.length} {order.items.length === 1 ? 'item' : 'itens'}
+                              </p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Select
+                                value={order.status}
+                                onValueChange={(value) => handleStatusChange(order.id, value as OrderStatus)}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="CONFIRMED">Confirmado</SelectItem>
+                                  <SelectItem value="READY">Pronto</SelectItem>
+                                  <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              {/* Out for delivery button */}
+                              {(order.status === 'CONFIRMED' || order.status === 'PREPARING' || order.status === 'READY') && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleOutForDelivery(order)}
+                                  className="gap-1"
+                                  title="Avisar saída para entrega"
+                                >
+                                  <Send className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Saindo</span>
+                                </Button>
+                              )}
+
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="icon">
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Pedido {order.id.substring(0, 8).toUpperCase()}</DialogTitle>
+                                  </DialogHeader>
+                                  <OrderDetails order={order} />
+                                </DialogContent>
+                              </Dialog>
+
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleWhatsApp(order)}
+                                title="Enviar WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </Button>
+
+                              <Button variant="outline" size="icon" onClick={() => handlePrint(order)} title="Imprimir pedido">
+                                <Printer className="w-4 h-4" />
+                              </Button>
+
+                              {/* Delete Order Button */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    title="Remover pedido"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Remover Pedido?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja remover o pedido {order.id.substring(0, 8).toUpperCase()}? Esta ação não pode
+                                      ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteOrder(order.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Remover
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                <p className="text-sm text-muted-foreground">Mostrando {pagedOrders.length} de {filteredOrders.length} pedidos</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Página {Math.min(page, totalPages)} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Clock className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">Nenhum pedido encontrado</p>
+                <p className="text-sm text-muted-foreground mt-1">Ajuste os filtros para ver outros resultados</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
