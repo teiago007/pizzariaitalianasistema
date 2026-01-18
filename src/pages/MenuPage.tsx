@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Loader2, ArrowRight } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
@@ -112,6 +112,14 @@ const MenuPage: React.FC = () => {
   }, [filteredProducts]);
 
   const [selectedSodaSize, setSelectedSodaSize] = useState<string>(() => refrigerantes.orderedSizes[0] || 'un');
+
+  // Se o filtro/busca mudar e o tamanho selecionado não existir mais, volta pro primeiro disponível
+  useEffect(() => {
+    if (refrigerantes.orderedSizes.length === 0) return;
+    if (!refrigerantes.orderedSizes.includes(selectedSodaSize)) {
+      setSelectedSodaSize(refrigerantes.orderedSizes[0]);
+    }
+  }, [refrigerantes.orderedSizes, selectedSodaSize]);
 
   return (
     <div className="min-h-screen py-8 md:py-12">
@@ -241,33 +249,43 @@ const MenuPage: React.FC = () => {
                   </Card>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(refrigerantes.bySize[selectedSodaSize] || []).map((product, index) => (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                      >
-                        <Card className="overflow-hidden h-full">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="font-semibold text-foreground truncate">{stripDrinkSize(product.name)}</p>
-                                <p className="text-sm text-muted-foreground">{selectedSodaSize === 'un' ? '' : selectedSodaSize.toUpperCase()}</p>
-                                <p className="text-lg font-bold text-primary mt-1">R$ {product.price.toFixed(2)}</p>
+                    {(() => {
+                      const availableItems = (refrigerantes.bySize[selectedSodaSize] || []).filter((p) => p.available);
+                      if (availableItems.length === 0) {
+                        return (
+                          <div className="col-span-full text-center py-8">
+                            <p className="text-muted-foreground">
+                              Nenhum refrigerante disponível para este tamanho.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return availableItems.map((product, index) => (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.03 }}
+                        >
+                          <Card className="overflow-hidden h-full">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-foreground truncate">{stripDrinkSize(product.name)}</p>
+                                  <p className="text-sm text-muted-foreground">{selectedSodaSize === 'un' ? '' : selectedSodaSize.toUpperCase()}</p>
+                                  <p className="text-lg font-bold text-primary mt-1">R$ {product.price.toFixed(2)}</p>
+                                </div>
+                                <Button onClick={() => addProduct(product)}>
+                                  Adicionar
+                                  <ArrowRight className="w-4 h-4 ml-2" />
+                                </Button>
                               </div>
-                              <Button
-                                onClick={() => addProduct(product)}
-                                disabled={!product.available}
-                              >
-                                Adicionar
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
+                            </CardContent>
+                          </Card>
+                         </motion.div>
+                      ));
+                    })()}
                   </div>
                 </section>
               )}

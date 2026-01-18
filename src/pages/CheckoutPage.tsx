@@ -24,7 +24,7 @@ const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
-  const { items, total } = useCart();
+  const { items, total, itemCount } = useCart();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     phone: '',
@@ -202,7 +202,7 @@ const CheckoutPage: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">
-                  {items.length} {items.length === 1 ? 'item' : 'itens'} no carrinho
+                  {itemCount} {itemCount === 1 ? 'item' : 'itens'} no carrinho
                 </span>
                 <span className="text-xl font-bold text-primary">
                   R$ {total.toFixed(2)}
