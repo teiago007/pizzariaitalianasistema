@@ -449,13 +449,26 @@ const AdminProducts: React.FC = () => {
   };
 
   // Filter data based on search
-  const filteredFlavors = flavors.filter(f => 
+  const filteredFlavors = flavors.filter(f =>
     f.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const categoryNameById = new Map<string, string>(categories.map((c: any) => [c.id, c.name]));
+
+  const flavorsGrouped = filteredFlavors.reduce<Record<string, PizzaFlavor[]>>((acc, f: any) => {
+    const key = f.category_id || 'no-category';
+    (acc[key] ||= []).push(f);
+    return acc;
+  }, {});
+
+  const groupedCategoryIds = [
+    ...categories.map((c: any) => c.id).filter((id: string) => (flavorsGrouped[id] || []).length > 0),
+    ...(flavorsGrouped['no-category'] ? ['no-category'] : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -495,67 +508,90 @@ const AdminProducts: React.FC = () => {
           {loadingFlavors ? (
             <div className="text-center py-8">Carregando...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredFlavors.map((flavor) => (
-                <motion.div
-                  key={flavor.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        {flavor.image_url && (
-                          <img 
-                            src={flavor.image_url} 
-                            alt={flavor.name}
-                            className="w-20 h-20 rounded-lg object-cover"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h3 className="font-semibold truncate">{flavor.name}</h3>
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {flavor.description}
-                              </p>
-                            </div>
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              flavor.available ? 'bg-green-500' : 'bg-red-500'
-                            }`} />
-                          </div>
-                          <div className="flex gap-1 mt-2 text-xs text-muted-foreground">
-                            <span>P: R${Number(flavor.price_p).toFixed(0)}</span>
-                            <span>M: R${Number(flavor.price_m).toFixed(0)}</span>
-                            <span>G: R${Number(flavor.price_g).toFixed(0)}</span>
-                            <span>GG: R${Number(flavor.price_gg).toFixed(0)}</span>
-                          </div>
-                          <div className="flex gap-2 mt-3">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => openFlavorDialog(flavor)}
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => {
-                                if (confirm('Excluir este sabor?')) {
-                                  deleteFlavorMutation.mutate(flavor.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+            <div className="space-y-8">
+              {groupedCategoryIds.map((catId) => {
+                const list = flavorsGrouped[catId] || [];
+                if (list.length === 0) return null;
+
+                const title =
+                  catId === 'no-category'
+                    ? 'Sem categoria'
+                    : categoryNameById.get(catId) || 'Categoria';
+
+                return (
+                  <div key={catId} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+                      <span className="text-sm text-muted-foreground">{list.length} pizza(s)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {list.map((flavor) => (
+                        <motion.div
+                          key={flavor.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <Card>
+                            <CardContent className="p-4">
+                              <div className="flex gap-4">
+                                {flavor.image_url && (
+                                  <img
+                                    src={flavor.image_url}
+                                    alt={flavor.name}
+                                    className="w-20 h-20 rounded-lg object-cover"
+                                  />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                      <h3 className="font-semibold truncate">{flavor.name}</h3>
+                                      <p className="text-sm text-muted-foreground line-clamp-1">
+                                        {flavor.description}
+                                      </p>
+                                    </div>
+                                    <div
+                                      className={`w-2 h-2 rounded-full mt-2 ${
+                                        flavor.available ? 'bg-green-500' : 'bg-red-500'
+                                      }`}
+                                    />
+                                  </div>
+                                  <div className="flex gap-1 mt-2 text-xs text-muted-foreground">
+                                    <span>P: R${Number(flavor.price_p).toFixed(0)}</span>
+                                    <span>M: R${Number(flavor.price_m).toFixed(0)}</span>
+                                    <span>G: R${Number(flavor.price_g).toFixed(0)}</span>
+                                    <span>GG: R${Number(flavor.price_gg).toFixed(0)}</span>
+                                  </div>
+                                  <div className="flex gap-2 mt-3">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openFlavorDialog(flavor)}
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => {
+                                        if (confirm('Excluir este sabor?')) {
+                                          deleteFlavorMutation.mutate(flavor.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>

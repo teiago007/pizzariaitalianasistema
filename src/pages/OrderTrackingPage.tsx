@@ -64,6 +64,13 @@ const OrderTrackingPage: React.FC = () => {
       return;
     }
 
+    // Persistir para o cliente poder sair e voltar depois
+    try {
+      localStorage.setItem('lastOrderId', orderId);
+    } catch {
+      // ignore
+    }
+
     // Fetch order initially
     const fetchOrder = async () => {
       try {

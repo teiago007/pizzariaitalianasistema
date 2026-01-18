@@ -32,7 +32,7 @@ const AdminOrders: React.FC = () => {
     }, 30000);
   });
 
-  // Only show confirmed orders (as per requirements)
+  // Exibir todos os pedidos (exceto pendentes), mas simplificar os status disponíveis conforme solicitado
   const confirmedOrders = orders.filter(o => o.status !== 'PENDING');
 
   const statusConfig: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -297,9 +297,7 @@ const AdminOrders: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="CONFIRMED">Confirmado</SelectItem>
-                            <SelectItem value="PREPARING">Preparando</SelectItem>
                             <SelectItem value="READY">Pronto</SelectItem>
-                            <SelectItem value="DELIVERED">Entregue</SelectItem>
                             <SelectItem value="CANCELLED">Cancelado</SelectItem>
                           </SelectContent>
                         </Select>

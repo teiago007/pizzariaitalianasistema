@@ -128,6 +128,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     description: f.description || '',
     ingredients: f.ingredients || [],
     image: f.image_url || undefined,
+    categoryId: f.category_id,
     prices: {
       P: Number(f.price_p),
       M: Number(f.price_m),
