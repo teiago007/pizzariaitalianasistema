@@ -109,6 +109,10 @@ export type Database = {
           display_order: number
           id: string
           name: string
+          price_g: number | null
+          price_gg: number | null
+          price_m: number | null
+          price_p: number | null
           updated_at: string
         }
         Insert: {
@@ -118,6 +122,10 @@ export type Database = {
           display_order?: number
           id?: string
           name: string
+          price_g?: number | null
+          price_gg?: number | null
+          price_m?: number | null
+          price_p?: number | null
           updated_at?: string
         }
         Update: {
@@ -127,6 +135,10 @@ export type Database = {
           display_order?: number
           id?: string
           name?: string
+          price_g?: number | null
+          price_gg?: number | null
+          price_m?: number | null
+          price_p?: number | null
           updated_at?: string
         }
         Relationships: []
