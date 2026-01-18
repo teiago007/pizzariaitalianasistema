@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, MapPin, Phone, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Phone, User, Clock } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useStore } from '@/contexts/StoreContext';
+import { useStoreAvailability } from '@/hooks/useStoreAvailability';
 import { CustomerInfo } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +13,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
+const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
+  if (!nextOpenAt) return undefined;
+  const d = new Date(`${nextOpenAt.date}T00:00:00-03:00`);
+  const dayLabel = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(d);
+  return `${dayLabel} ${nextOpenAt.time}`;
+};
+
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
+  const { settings } = useStore();
+  const { availability } = useStoreAvailability(settings.isOpen);
   const { items, total } = useCart();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
@@ -49,6 +60,12 @@ const CheckoutPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!availability.isOpenNow) {
+      const nextOpen = formatNextOpenShort(availability.nextOpenAt);
+      toast.error(nextOpen ? `Loja fechada. Próxima abertura: ${nextOpen}.` : 'Loja fechada no momento.');
+      return;
+    }
+
     if (!customerInfo.name.trim()) {
       toast.error('Por favor, informe seu nome');
       return;
@@ -66,6 +83,8 @@ const CheckoutPage: React.FC = () => {
     sessionStorage.setItem('customerInfo', JSON.stringify(customerInfo));
     navigate('/pagamento');
   };
+
+  const nextOpenShort = formatNextOpenShort(availability.nextOpenAt);
 
   return (
     <div className="min-h-screen py-8 md:py-12">
@@ -89,6 +108,20 @@ const CheckoutPage: React.FC = () => {
             Informe seus dados para finalizarmos o pedido
           </p>
         </motion.div>
+
+        {!availability.isOpenNow && (
+          <div className="mb-6 p-4 rounded-lg bg-muted/40 border border-border text-sm text-muted-foreground flex items-start gap-3">
+            <Clock className="w-5 h-5 mt-0.5" />
+            <div>
+              <p className="font-medium text-foreground">Loja fechada no momento</p>
+              <p>
+                {nextOpenShort
+                  ? `Voltamos a aceitar pedidos em: ${nextOpenShort}.`
+                  : 'Voltaremos a aceitar pedidos em breve.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <Card className="mb-6">
@@ -178,7 +211,7 @@ const CheckoutPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" size="lg" className="w-full" disabled={!availability.isOpenNow}>
             Continuar para Pagamento
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>

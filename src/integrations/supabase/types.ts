@@ -298,6 +298,69 @@ export type Database = {
         }
         Relationships: []
       }
+      store_exceptions: {
+        Row: {
+          close_time: string | null
+          created_at: string
+          exception_date: string
+          id: string
+          is_closed: boolean
+          note: string | null
+          open_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          close_time?: string | null
+          created_at?: string
+          exception_date: string
+          id?: string
+          is_closed?: boolean
+          note?: string | null
+          open_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          close_time?: string | null
+          created_at?: string
+          exception_date?: string
+          id?: string
+          is_closed?: boolean
+          note?: string | null
+          open_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      store_hours: {
+        Row: {
+          close_time: string | null
+          created_at: string
+          day_of_week: number
+          id: string
+          is_closed: boolean
+          open_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          close_time?: string | null
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_closed?: boolean
+          open_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          close_time?: string | null
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_closed?: boolean
+          open_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
