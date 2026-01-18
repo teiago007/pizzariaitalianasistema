@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  DollarSign, 
-  ShoppingBag, 
+import { Link } from 'react-router-dom';
+import {
+  DollarSign,
+  ShoppingBag,
   TrendingUp,
   ArrowUp,
   ArrowDown,
@@ -12,13 +13,14 @@ import { useOrders } from '@/hooks/useOrders';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { Button } from '@/components/ui/button';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -108,15 +110,25 @@ const AdminDashboard: React.FC = () => {
 
   // Daily sales data from REAL orders
   const dailySalesData = useMemo(() => {
-    const confirmedOrders = filteredOrders.filter(o => 
+    const confirmedOrders = filteredOrders.filter(o =>
       o.status !== 'PENDING' && o.status !== 'CANCELLED'
     );
 
+    const normalizeWeekdayShort = (date: Date) => {
+      // Examples we may receive depending on browser/locale: "dom.", "seg.", "sáb.".
+      // Our reference list uses "dom", "seg", "ter", ... so we normalize.
+      return date
+        .toLocaleDateString('pt-BR', { weekday: 'short' })
+        .toLowerCase()
+        .replace('.', '')
+        .trim();
+    };
+
     const salesByDay: Record<string, number> = {};
-    
+
     confirmedOrders.forEach(order => {
-      const date = new Date(order.createdAt).toLocaleDateString('pt-BR', { weekday: 'short' });
-      salesByDay[date] = (salesByDay[date] || 0) + order.total;
+      const key = normalizeWeekdayShort(new Date(order.createdAt));
+      salesByDay[key] = (salesByDay[key] || 0) + order.total;
     });
 
     // Get last 7 days
@@ -345,8 +357,11 @@ const AdminDashboard: React.FC = () => {
 
       {/* Recent Orders Preview */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle className="text-lg">Pedidos Recentes</CardTitle>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/pedidos">Ver todos</Link>
+          </Button>
         </CardHeader>
         <CardContent>
           {orders.length > 0 ? (

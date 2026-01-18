@@ -15,6 +15,7 @@ import CartPage from "@/pages/CartPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import PaymentPage from "@/pages/PaymentPage";
 import OrderTrackingPage from "@/pages/OrderTrackingPage";
+import TrackOrderPage from "@/pages/TrackOrderPage";
 // Admin Pages
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
 import AdminLayout from "@/pages/admin/AdminLayout";
@@ -44,6 +45,7 @@ const App = () => (
                   <Route path="/carrinho" element={<CartPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/pagamento" element={<PaymentPage />} />
+                  <Route path="/acompanhar" element={<TrackOrderPage />} />
                   <Route path="/pedido/:orderId" element={<OrderTrackingPage />} />
                 </Route>
 

@@ -68,6 +68,11 @@ const PaymentPage: React.FC = () => {
       }
 
       setOrderId(newOrderId);
+      try {
+        localStorage.setItem('lastOrderId', newOrderId);
+      } catch {
+        // ignore
+      }
 
       // Generate PIX code
       const { data, error } = await supabase.functions.invoke('generate-pix', {
@@ -136,6 +141,11 @@ const PaymentPage: React.FC = () => {
       }
 
       setOrderId(newOrderId);
+      try {
+        localStorage.setItem('lastOrderId', newOrderId);
+      } catch {
+        // ignore
+      }
 
       // Confirm immediately for cash
       await confirmOrder(newOrderId);
@@ -168,6 +178,11 @@ const PaymentPage: React.FC = () => {
       }
 
       setOrderId(newOrderId);
+      try {
+        localStorage.setItem('lastOrderId', newOrderId);
+      } catch {
+        // ignore
+      }
 
       // Confirm immediately for card (payment on delivery)
       await confirmOrder(newOrderId);

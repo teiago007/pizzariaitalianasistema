@@ -116,6 +116,11 @@ export const Header: React.FC = () => {
                 Cardápio
               </Button>
             </Link>
+            <Link to="/acompanhar">
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                Acompanhar pedido
+              </Button>
+            </Link>
             <Link to="/carrinho">
               <Button variant="outline" size="sm" className="relative">
                 <ShoppingCart className="w-4 h-4 mr-2" />
