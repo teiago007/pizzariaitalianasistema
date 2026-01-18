@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Pencil, Trash2, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tables } from '@/integrations/supabase/types';
 import PizzaCategoriesManager from '@/components/admin/PizzaCategoriesManager';
+import { useSearchParams } from 'react-router-dom';
 
 type PizzaFlavor = Tables<'pizza_flavors'>;
 type PizzaBorder = Tables<'pizza_borders'>;
@@ -23,6 +24,7 @@ type Product = Tables<'products'>;
 const AdminProducts: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Pizza Flavor Dialog
   const [flavorDialogOpen, setFlavorDialogOpen] = useState(false);
@@ -363,6 +365,22 @@ const AdminProducts: React.FC = () => {
     }
     setFlavorDialogOpen(true);
   };
+
+  // Abrir modal de edição via URL: /admin/produtos?editFlavorId=UUID
+  useEffect(() => {
+    const editFlavorId = searchParams.get('editFlavorId');
+    if (!editFlavorId) return;
+    if (!flavors || flavors.length === 0) return;
+
+    const found = (flavors as any[]).find((f) => f.id === editFlavorId);
+    if (found) {
+      openFlavorDialog(found as any);
+      const next = new URLSearchParams(searchParams);
+      next.delete('editFlavorId');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, flavors]);
+
 
   const openBorderDialog = (border?: PizzaBorder) => {
     if (border) {

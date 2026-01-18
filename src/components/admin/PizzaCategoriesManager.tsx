@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 interface PizzaCategory {
   id: string;
@@ -54,7 +55,28 @@ const PizzaCategoriesManager: React.FC = () => {
     },
   });
 
-  // Save category mutation
+  // Fetch flavors (para listar vinculadas por categoria)
+  const { data: flavors = [] } = useQuery({
+    queryKey: ['admin-pizza-flavors-for-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pizza_flavors')
+        .select('id,name,category_id,available')
+        .order('name');
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const flavorsByCategoryId = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const f of flavors) {
+      const key = f.category_id || '__none__';
+      (map[key] ||= []).push(f);
+    }
+    return map;
+  }, [flavors]);
+
   const saveMutation = useMutation({
     mutationFn: async (data: Partial<PizzaCategory>) => {
       if (editingCategory) {
@@ -188,29 +210,59 @@ const PizzaCategoriesManager: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
-                    
+
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{category.name}</h3>
-                        <div className={`w-2 h-2 rounded-full ${
-                          category.available ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${category.available ? 'bg-green-500' : 'bg-red-500'}`} />
                       </div>
                       {category.description && (
                         <p className="text-sm text-muted-foreground">{category.description}</p>
                       )}
+
+                      {/* Pizzas vinculadas */}
+                      <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-medium text-foreground">
+                            Pizzas nesta categoria: {(flavorsByCategoryId[category.id] || []).length}
+                          </p>
+                          <Link to={`/admin/produtos?editCategoryId=${category.id}`} className="text-sm text-muted-foreground hover:text-foreground">
+                            Ver na aba Produtos
+                          </Link>
+                        </div>
+
+                        {(flavorsByCategoryId[category.id] || []).length === 0 ? (
+                          <p className="text-sm text-muted-foreground mt-2">Nenhuma pizza vinculada.</p>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            {(flavorsByCategoryId[category.id] || []).slice(0, 8).map((f) => (
+                              <div key={f.id} className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{f.name}</p>
+                                  {!f.available && <p className="text-xs text-muted-foreground">Indisponível</p>}
+                                </div>
+                                <Link to={`/admin/produtos?editFlavorId=${f.id}`}>
+                                  <Button size="sm" variant="outline" className="gap-1">
+                                    <Pencil className="w-3 h-3" />
+                                    Editar
+                                  </Button>
+                                </Link>
+                              </div>
+                            ))}
+                            {(flavorsByCategoryId[category.id] || []).length > 8 && (
+                              <p className="text-xs text-muted-foreground">+{(flavorsByCategoryId[category.id] || []).length - 8} pizzas…</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => openDialog(category)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => openDialog(category)}>
                         <Pencil className="w-3 h-3" />
                       </Button>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="destructive"
                         onClick={() => {
                           if (confirm('Excluir esta categoria? As pizzas vinculadas ficarão sem categoria.')) {
