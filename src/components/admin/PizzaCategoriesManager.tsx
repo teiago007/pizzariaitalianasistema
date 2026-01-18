@@ -226,9 +226,20 @@ const PizzaCategoriesManager: React.FC = () => {
                           <p className="text-sm font-medium text-foreground">
                             Pizzas nesta categoria: {(flavorsByCategoryId[category.id] || []).length}
                           </p>
-                          <Link to={`/admin/produtos?editCategoryId=${category.id}`} className="text-sm text-muted-foreground hover:text-foreground">
-                            Ver na aba Produtos
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              to={`/admin/produtos?newFlavorCategoryId=${category.id}`}
+                              className="text-sm text-muted-foreground hover:text-foreground"
+                            >
+                              + Adicionar pizza
+                            </Link>
+                            <Link
+                              to={`/admin/produtos?editCategoryId=${category.id}`}
+                              className="text-sm text-muted-foreground hover:text-foreground"
+                            >
+                              Ver na aba Produtos
+                            </Link>
+                          </div>
                         </div>
 
                         {(flavorsByCategoryId[category.id] || []).length === 0 ? (

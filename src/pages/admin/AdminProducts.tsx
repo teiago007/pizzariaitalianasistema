@@ -381,7 +381,20 @@ const AdminProducts: React.FC = () => {
     }
   }, [searchParams, setSearchParams, flavors]);
 
+  // Abrir modal de novo sabor com categoria pré-selecionada:
+  // /admin/produtos?newFlavorCategoryId=UUID
+  useEffect(() => {
+    const newFlavorCategoryId = searchParams.get('newFlavorCategoryId');
+    if (!newFlavorCategoryId) return;
 
+    resetFlavorForm();
+    setFlavorForm((f) => ({ ...f, category_id: newFlavorCategoryId }));
+    setFlavorDialogOpen(true);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('newFlavorCategoryId');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
   const openBorderDialog = (border?: PizzaBorder) => {
     if (border) {
       setEditingBorder(border);
