@@ -60,14 +60,35 @@ serve(async (req) => {
 
     // Parse items from JSONB
     const items = order.items as any[];
-    const itemsList = items.map((item: any) => {
-      if (item.type === 'pizza') {
-        const flavors = item.flavors.map((f: any) => f.name).join(' + ');
-        return `🍕 Pizza ${flavors} (${item.size}) x${item.quantity}`;
-      } else {
-        return `🥤 ${item.product?.name || 'Produto'} x${item.quantity}`;
-      }
-    }).join('\n');
+
+    const parseDrinkSize = (name: string) => {
+      const m = (name || '').trim().match(/(\d+[\.,]?\d*)\s*(ml|l)\s*$/i);
+      if (!m) return null;
+      const value = m[1].replace(',', '.');
+      const unit = m[2].toLowerCase();
+      return `${value}${unit}`;
+    };
+
+    const stripDrinkSize = (name: string) => (name || '').replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
+
+    const formatProductLabel = (productName?: string) => {
+      const name = productName || 'Produto';
+      const size = parseDrinkSize(name);
+      if (!size) return name;
+      return `${stripDrinkSize(name)} (${size.toUpperCase()})`;
+    };
+
+    const itemsList = items
+      .map((item: any) => {
+        if (item.type === 'pizza') {
+          const flavors = item.flavors.map((f: any) => f.name).join(' + ');
+          return `🍕 Pizza ${flavors} (${item.size}) x${item.quantity}`;
+        }
+
+        const label = formatProductLabel(item.product?.name);
+        return `🥤 ${label} x${item.quantity}`;
+      })
+      .join('\n');
 
     const paymentMethods: Record<string, string> = {
       pix: '💳 PIX',

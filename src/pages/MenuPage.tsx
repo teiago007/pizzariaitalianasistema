@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type DbCategory = {
   id: string;
@@ -37,6 +38,10 @@ const MenuPage: React.FC = () => {
   const { flavors, products, isLoadingFlavors, isLoadingProducts } = useStore();
   const { addProduct } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
+  const [pizzaCategoryFilter, setPizzaCategoryFilter] = useState<'__all__' | '__none__' | string>('__all__');
+  const [productCategoryFilter, setProductCategoryFilter] = useState<'__all__' | string>('__all__');
+  const [onlyAvailableProducts, setOnlyAvailableProducts] = useState(true);
+  const [productSort, setProductSort] = useState<'name_asc' | 'price_asc' | 'price_desc'>('name_asc');
 
   const { data: pizzaCategories = [] } = useQuery({
     queryKey: ['pizza-categories-public'],
@@ -51,17 +56,40 @@ const MenuPage: React.FC = () => {
     },
   });
 
-  const filteredFlavors = flavors.filter(f =>
-    f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const q = searchTerm.toLowerCase();
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFlavors = useMemo(() => {
+    const list = flavors.filter(
+      (f) => f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q)
+    );
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [flavors, q]);
 
-  const productCategories = [...new Set(products.map(p => p.category))];
+  const filteredProducts = useMemo(() => {
+    let list = products.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    );
+
+    if (productCategoryFilter !== '__all__') {
+      list = list.filter((p) => p.category === productCategoryFilter);
+    }
+
+    if (onlyAvailableProducts) {
+      list = list.filter((p) => p.available);
+    }
+
+    const byName = (a: any, b: any) => a.name.localeCompare(b.name);
+    if (productSort === 'name_asc') list = [...list].sort(byName);
+    if (productSort === 'price_asc') list = [...list].sort((a, b) => a.price - b.price || byName(a, b));
+    if (productSort === 'price_desc') list = [...list].sort((a, b) => b.price - a.price || byName(a, b));
+
+    return list;
+  }, [products, q, productCategoryFilter, onlyAvailableProducts, productSort]);
+
+  const productCategories = useMemo(
+    () => [...new Set(products.map((p) => p.category))].sort((a, b) => a.localeCompare(b)),
+    [products]
+  );
 
   const isLoading = isLoadingFlavors || isLoadingProducts;
 
@@ -81,7 +109,7 @@ const MenuPage: React.FC = () => {
   }, [filteredFlavors]);
 
   const refrigerantes = useMemo(() => {
-    const items = filteredProducts.filter(p => p.category.toLowerCase() === 'refrigerantes');
+    const items = filteredProducts.filter((p) => p.category.toLowerCase() === 'refrigerantes');
     const sizes = new Set<string>();
     const bySize: Record<string, typeof items> = {};
 
@@ -104,7 +132,7 @@ const MenuPage: React.FC = () => {
       return toMl(a) - toMl(b);
     });
 
-    orderedSizes.forEach(size => {
+    orderedSizes.forEach((size) => {
       bySize[size] = (bySize[size] || []).sort((a, b) => stripDrinkSize(a.name).localeCompare(stripDrinkSize(b.name)));
     });
 
@@ -165,9 +193,42 @@ const MenuPage: React.FC = () => {
             </TabsList>
 
             <TabsContent value="pizzas">
+              <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={pizzaCategoryFilter === '__all__' ? 'default' : 'outline'}
+                  onClick={() => setPizzaCategoryFilter('__all__')}
+                >
+                  Todas
+                </Button>
+                {pizzaCategories.map((cat) => (
+                  <Button
+                    key={cat.id}
+                    type="button"
+                    size="sm"
+                    variant={pizzaCategoryFilter === cat.id ? 'default' : 'outline'}
+                    onClick={() => setPizzaCategoryFilter(cat.id)}
+                  >
+                    {cat.name}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={pizzaCategoryFilter === '__none__' ? 'default' : 'outline'}
+                  onClick={() => setPizzaCategoryFilter('__none__')}
+                >
+                  Sem categoria
+                </Button>
+              </div>
+
               {filteredFlavors.length > 0 ? (
                 <div className="space-y-10">
                   {pizzaCategories.map((cat) => {
+                    if (pizzaCategoryFilter === '__none__') return null;
+                    if (pizzaCategoryFilter !== '__all__' && pizzaCategoryFilter !== cat.id) return null;
+
                     const list = flavorsByCategory.byId[cat.id] || [];
                     if (list.length === 0) return null;
                     return (
@@ -194,7 +255,8 @@ const MenuPage: React.FC = () => {
                     );
                   })}
 
-                  {flavorsByCategory.noCategory.length > 0 && (
+                  {(pizzaCategoryFilter === '__all__' || pizzaCategoryFilter === '__none__') &&
+                    flavorsByCategory.noCategory.length > 0 && (
                     <section className="space-y-4">
                       <div className="text-center">
                         <h2 className="font-display text-2xl font-semibold text-foreground">Outras</h2>
@@ -222,6 +284,54 @@ const MenuPage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="bebidas">
+              <div className="mb-6 space-y-3">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={productCategoryFilter === '__all__' ? 'default' : 'outline'}
+                    onClick={() => setProductCategoryFilter('__all__')}
+                  >
+                    Todas
+                  </Button>
+                  {productCategories.map((cat) => (
+                    <Button
+                      key={cat}
+                      type="button"
+                      size="sm"
+                      variant={productCategoryFilter === cat ? 'default' : 'outline'}
+                      onClick={() => setProductCategoryFilter(cat)}
+                    >
+                      {cat}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-center">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={onlyAvailableProducts ? 'default' : 'outline'}
+                    onClick={() => setOnlyAvailableProducts((v) => !v)}
+                  >
+                    {onlyAvailableProducts ? 'Somente disponíveis' : 'Mostrar indisponíveis'}
+                  </Button>
+
+                  <div className="w-full sm:w-[220px]">
+                    <Select value={productSort} onValueChange={(v) => setProductSort(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Ordenar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name_asc">Nome (A–Z)</SelectItem>
+                        <SelectItem value="price_asc">Preço (menor)</SelectItem>
+                        <SelectItem value="price_desc">Preço (maior)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
               {/* Refrigerantes: escolher tamanho -> escolher sabor */}
               {refrigerantes.items.length > 0 && (
                 <section className="mb-10">
@@ -250,18 +360,22 @@ const MenuPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {(() => {
-                      const availableItems = (refrigerantes.bySize[selectedSodaSize] || []).filter((p) => p.available);
-                      if (availableItems.length === 0) {
+                      const itemsForSize = refrigerantes.bySize[selectedSodaSize] || [];
+                      const visibleItems = onlyAvailableProducts
+                        ? itemsForSize.filter((p) => p.available)
+                        : itemsForSize;
+
+                      if (visibleItems.length === 0) {
                         return (
                           <div className="col-span-full text-center py-8">
                             <p className="text-muted-foreground">
-                              Nenhum refrigerante disponível para este tamanho.
+                              Nenhum refrigerante {onlyAvailableProducts ? 'disponível ' : ''}para este tamanho.
                             </p>
                           </div>
                         );
                       }
 
-                      return availableItems.map((product, index) => (
+                      return visibleItems.map((product, index) => (
                         <motion.div
                           key={product.id}
                           initial={{ opacity: 0, y: 20 }}
@@ -276,7 +390,7 @@ const MenuPage: React.FC = () => {
                                   <p className="text-sm text-muted-foreground">{selectedSodaSize === 'un' ? '' : selectedSodaSize.toUpperCase()}</p>
                                   <p className="text-lg font-bold text-primary mt-1">R$ {product.price.toFixed(2)}</p>
                                 </div>
-                                <Button onClick={() => addProduct(product)}>
+                                <Button onClick={() => addProduct(product)} disabled={!product.available}>
                                   Adicionar
                                   <ArrowRight className="w-4 h-4 ml-2" />
                                 </Button>
@@ -292,14 +406,14 @@ const MenuPage: React.FC = () => {
 
               {productCategories.map((category) => {
                 if (category.toLowerCase() === 'refrigerantes') return null;
-                const categoryProducts = filteredProducts.filter(p => p.category === category);
+                if (productCategoryFilter !== '__all__' && productCategoryFilter !== category) return null;
+
+                const categoryProducts = filteredProducts.filter((p) => p.category === category);
                 if (categoryProducts.length === 0) return null;
 
                 return (
                   <div key={category} className="mb-8">
-                    <h3 className="font-display text-xl font-semibold text-foreground mb-4">
-                      {category}
-                    </h3>
+                    <h3 className="font-display text-xl font-semibold text-foreground mb-4">{category}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {categoryProducts.map((product, index) => (
                         <motion.div
@@ -315,7 +429,7 @@ const MenuPage: React.FC = () => {
                   </div>
                 );
               })}
-              {filteredProducts.length === 0 && (
+              {filteredProducts.filter((p) => p.category.toLowerCase() !== 'refrigerantes').length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum produto encontrado</p>
                 </div>
