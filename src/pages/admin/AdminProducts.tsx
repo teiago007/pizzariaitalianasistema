@@ -37,7 +37,8 @@ const AdminProducts: React.FC = () => {
     price_gg: 0,
     available: true,
     image_url: '',
-    category_id: '',
+    // Radix Select não aceita value="" em SelectItem, então usamos um sentinel.
+    category_id: '__none__',
   });
   const [flavorImageFile, setFlavorImageFile] = useState<File | null>(null);
 
@@ -311,7 +312,7 @@ const AdminProducts: React.FC = () => {
       price_gg: 0,
       available: true,
       image_url: '',
-      category_id: '',
+      category_id: '__none__',
     });
     setFlavorImageFile(null);
   };
@@ -355,7 +356,7 @@ const AdminProducts: React.FC = () => {
         price_gg: Number(flavor.price_gg),
         available: flavor.available,
         image_url: flavor.image_url || '',
-        category_id: (flavor as any).category_id || '',
+        category_id: (flavor as any).category_id || '__none__',
       });
     } else {
       resetFlavorForm();
@@ -403,6 +404,9 @@ const AdminProducts: React.FC = () => {
       toast.error('Nome é obrigatório');
       return;
     }
+
+    const categoryId = flavorForm.category_id === '__none__' ? null : flavorForm.category_id;
+
     saveFlavorMutation.mutate({
       name: flavorForm.name,
       description: flavorForm.description,
@@ -413,7 +417,7 @@ const AdminProducts: React.FC = () => {
       price_gg: flavorForm.price_gg,
       available: flavorForm.available,
       image_url: flavorForm.image_url,
-      category_id: flavorForm.category_id || null,
+      category_id: categoryId,
     } as any);
   };
 
@@ -781,7 +785,7 @@ const AdminProducts: React.FC = () => {
                   <SelectValue placeholder="Selecione uma categoria (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem categoria</SelectItem>
+                  <SelectItem value="__none__">Sem categoria</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.name}
