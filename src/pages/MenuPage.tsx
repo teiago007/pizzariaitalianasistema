@@ -139,13 +139,13 @@ const MenuPage: React.FC = () => {
     return { items, orderedSizes, bySize };
   }, [filteredProducts]);
 
-  const [selectedSodaSize, setSelectedSodaSize] = useState<string>(() => refrigerantes.orderedSizes[0] || 'un');
+  const [selectedSodaSize, setSelectedSodaSize] = useState<string | null>(null);
 
-  // Se o filtro/busca mudar e o tamanho selecionado não existir mais, volta pro primeiro disponível
+  // Se o filtro/busca mudar e o tamanho selecionado não existir mais, limpa a seleção
   useEffect(() => {
-    if (refrigerantes.orderedSizes.length === 0) return;
+    if (selectedSodaSize === null) return;
     if (!refrigerantes.orderedSizes.includes(selectedSodaSize)) {
-      setSelectedSodaSize(refrigerantes.orderedSizes[0]);
+      setSelectedSodaSize(null);
     }
   }, [refrigerantes.orderedSizes, selectedSodaSize]);
 
@@ -351,7 +351,7 @@ const MenuPage: React.FC = () => {
                             size="sm"
                             onClick={() => setSelectedSodaSize(size)}
                           >
-                            {size === 'un' ? 'Unidade' : size.toUpperCase()}
+                            Refrigerante {size === 'un' ? 'Unidade' : size.toUpperCase()}
                           </Button>
                         ))}
                       </div>
@@ -360,6 +360,14 @@ const MenuPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {(() => {
+                      if (!selectedSodaSize) {
+                        return (
+                          <div className="col-span-full text-center py-8">
+                            <p className="text-muted-foreground">Selecione um tamanho para ver os refrigerantes disponíveis.</p>
+                          </div>
+                        );
+                      }
+
                       const itemsForSize = refrigerantes.bySize[selectedSodaSize] || [];
                       const visibleItems = onlyAvailableProducts
                         ? itemsForSize.filter((p) => p.available)
