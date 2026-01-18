@@ -109,6 +109,22 @@ const AdminOrders: React.FC = () => {
     card: 'Cartão',
   };
 
+  const parseDrinkSize = (name: string) => {
+    const m = name.trim().match(/(\d+[\.,]?\d*)\s*(ml|l)\s*$/i);
+    if (!m) return null;
+    const value = m[1].replace(',', '.');
+    const unit = m[2].toLowerCase();
+    return `${value}${unit}`;
+  };
+
+  const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
+
+  const formatProductLabel = (name: string) => {
+    const size = parseDrinkSize(name);
+    if (!size) return name;
+    return `${stripDrinkSize(name)} (${size.toUpperCase()})`;
+  };
+
   const handleStatusChange = async (orderId: string, status: OrderStatus) => {
     await updateOrderStatus(orderId, status);
   };
@@ -181,12 +197,11 @@ const AdminOrders: React.FC = () => {
           <div class="info"><strong>Endereço:</strong> ${order.customer.address}</div>
           ${order.customer.complement ? `<div class="info"><strong>Complemento:</strong> ${order.customer.complement}</div>` : ''}
           <hr/>
-          <div><strong>Itens:</strong></div>
           ${order.items.map(item => {
             if (item.type === 'pizza') {
               return `<div class="item">${item.quantity}x Pizza ${item.flavors.map(f => f.name).join(' + ')} (${item.size}) - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
             } else {
-              return `<div class="item">${item.quantity}x ${item.product.name} - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
+              return `<div class="item">${item.quantity}x ${formatProductLabel(item.product.name)} - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
             }
           }).join('')}
           <div class="total">TOTAL: R$ ${order.total.toFixed(2)}</div>
@@ -251,7 +266,12 @@ const AdminOrders: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <p className="font-medium">{item.product.name}</p>
+                  <>
+                    <p className="font-medium">{formatProductLabel(item.product.name)}</p>
+                    {parseDrinkSize(item.product.name) && (
+                      <p className="text-xs text-muted-foreground">(tamanho do refrigerante)</p>
+                    )}
+                  </>
                 )}
                 <p className="text-sm text-muted-foreground">Qtd: {item.quantity}</p>
               </div>
