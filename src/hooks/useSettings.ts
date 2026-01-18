@@ -71,28 +71,55 @@ export function useSettings() {
 
   const updateSettings = async (updates: Partial<PizzeriaSettings & { pixKey?: string; pixName?: string }>) => {
     try {
-      const dbUpdates: any = {};
-      if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.logo !== undefined) dbUpdates.logo_url = updates.logo;
-      if (updates.isOpen !== undefined) dbUpdates.is_open = updates.isOpen;
-      if (updates.whatsapp !== undefined) dbUpdates.whatsapp = updates.whatsapp;
-      if (updates.address !== undefined) dbUpdates.address = updates.address;
-      if (updates.primaryColor !== undefined) dbUpdates.primary_color = updates.primaryColor;
-      if (updates.secondaryColor !== undefined) dbUpdates.secondary_color = updates.secondaryColor;
-      if (updates.accentColor !== undefined) dbUpdates.accent_color = updates.accentColor;
-      if (updates.pixKey !== undefined) dbUpdates.pix_key = updates.pixKey;
-      if (updates.pixName !== undefined) dbUpdates.pix_name = updates.pixName;
+      // Garante payload completo para INSERT quando ainda não existir registro
+      const merged = { ...settings, ...updates };
+
+      const dbUpdates: any = {
+        name: merged.name,
+        is_open: merged.isOpen,
+        whatsapp: merged.whatsapp,
+        address: merged.address,
+        primary_color: merged.primaryColor,
+        secondary_color: merged.secondaryColor,
+        accent_color: merged.accentColor,
+        logo_url: merged.logo ?? null,
+        pix_key: merged.pixKey ?? null,
+        pix_name: merged.pixName ?? null,
+      };
 
       if (settings.id) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('pizzeria_settings')
           .update(dbUpdates)
-          .eq('id', settings.id);
+          .eq('id', settings.id)
+          .select('*')
+          .maybeSingle();
 
         if (error) throw error;
+
+        // Se o backend devolver a linha atualizada, usamos ela como fonte da verdade
+        if (data) {
+          setSettings(mapDbToSettings(data as DbSettings));
+        } else {
+          setSettings((prev) => ({ ...prev, ...updates }));
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('pizzeria_settings')
+          .insert(dbUpdates)
+          .select('*')
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setSettings(mapDbToSettings(data as DbSettings));
+        } else {
+          // fallback (não esperado), mas mantém UI consistente
+          setSettings((prev) => ({ ...prev, ...updates }));
+        }
       }
 
-      setSettings(prev => ({ ...prev, ...updates }));
       toast.success('Configurações salvas');
     } catch (error) {
       console.error('Error updating settings:', error);

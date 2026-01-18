@@ -93,8 +93,13 @@ const AdminSettings: React.FC = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    await updateSettings(formData);
-    setIsSaving(false);
+    try {
+      await updateSettings(formData);
+      // garante que a tela reflita o que ficou persistido
+      await queryClient.invalidateQueries({ queryKey: ['pizzeria-settings'] });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
