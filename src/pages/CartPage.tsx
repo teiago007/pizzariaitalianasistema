@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, Clock } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, Clock, Copy } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useStore } from '@/contexts/StoreContext';
 import { useStoreAvailability } from '@/hooks/useStoreAvailability';
@@ -18,11 +18,21 @@ const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
   return `${dayLabel} ${nextOpenAt.time}`;
 };
 
+const parseDrinkSize = (name: string) => {
+  const m = name.trim().match(/(\d+[\.,]?\d*)\s*(ml|l)\s*$/i);
+  if (!m) return null;
+  const value = m[1].replace(',', '.');
+  const unit = m[2].toLowerCase();
+  return `${value}${unit}`;
+};
+
+const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
+
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
-  const { items, removeItem, updateQuantity, total, clearCart } = useCart();
+  const { items, removeItem, updateQuantity, total, clearCart, addPizza } = useCart();
 
   const sizeLabels = {
     P: 'Pequena',
@@ -66,14 +76,28 @@ const CartPage: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => removeItem(index)}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => addPizza(item.size, item.flavors, item.border)}
+              className="h-8 w-8"
+              aria-label="Repetir item"
+              title="Repetir item"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeItem(index)}
+              className="text-destructive hover:text-destructive"
+              aria-label="Remover item"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
 
           <div className="flex items-center gap-2">
             <Button
@@ -121,8 +145,23 @@ const CartPage: React.FC = () => {
         </div>
 
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground">{item.product.name}</h3>
-          <p className="text-sm text-muted-foreground">{item.product.description}</p>
+          {(() => {
+            const isSoda = item.product.category?.toLowerCase() === 'refrigerantes';
+            const size = parseDrinkSize(item.product.name);
+            const baseName = size ? stripDrinkSize(item.product.name) : item.product.name;
+
+            return (
+              <>
+                <h3 className="font-semibold text-foreground">
+                  {isSoda ? baseName : `${baseName}${size ? ` (${size.toUpperCase()})` : ''}`}
+                </h3>
+                {isSoda && size && <p className="text-sm text-muted-foreground">{size.toUpperCase()}</p>}
+                {item.product.description ? (
+                  <p className="text-sm text-muted-foreground">{item.product.description}</p>
+                ) : null}
+              </>
+            );
+          })()}
           <p className="text-primary font-bold mt-1">
             R$ {item.unitPrice.toFixed(2)}
           </p>
