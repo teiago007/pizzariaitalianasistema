@@ -197,6 +197,7 @@ const AdminOrders: React.FC = () => {
           <div class="info"><strong>Endereço:</strong> ${order.customer.address}</div>
           ${order.customer.complement ? `<div class="info"><strong>Complemento:</strong> ${order.customer.complement}</div>` : ''}
           <hr/>
+          <div><strong>Itens:</strong></div>
           ${order.items.map(item => {
             if (item.type === 'pizza') {
               return `<div class="item">${item.quantity}x Pizza ${item.flavors.map(f => f.name).join(' + ')} (${item.size}) - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
