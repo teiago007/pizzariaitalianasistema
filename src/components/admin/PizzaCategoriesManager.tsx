@@ -18,6 +18,10 @@ interface PizzaCategory {
   description: string | null;
   display_order: number;
   available: boolean;
+  price_p: number | null;
+  price_m: number | null;
+  price_g: number | null;
+  price_gg: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +35,10 @@ const PizzaCategoriesManager: React.FC = () => {
     description: '',
     display_order: 0,
     available: true,
+    price_p: '' as string | number,
+    price_m: '' as string | number,
+    price_g: '' as string | number,
+    price_gg: '' as string | number,
   });
 
   // Fetch categories
@@ -98,6 +106,10 @@ const PizzaCategoriesManager: React.FC = () => {
       description: '',
       display_order: categories.length,
       available: true,
+      price_p: '',
+      price_m: '',
+      price_g: '',
+      price_gg: '',
     });
   };
 
@@ -109,6 +121,10 @@ const PizzaCategoriesManager: React.FC = () => {
         description: category.description || '',
         display_order: category.display_order,
         available: category.available,
+        price_p: category.price_p ?? '',
+        price_m: category.price_m ?? '',
+        price_g: category.price_g ?? '',
+        price_gg: category.price_gg ?? '',
       });
     } else {
       resetForm();
@@ -121,11 +137,22 @@ const PizzaCategoriesManager: React.FC = () => {
       toast.error('Nome é obrigatório');
       return;
     }
+
+    const toNullableNumber = (v: string | number) => {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     saveMutation.mutate({
       name: form.name,
       description: form.description || null,
-      display_order: form.display_order,
+      display_order: Number(form.display_order) || 0,
       available: form.available,
+      price_p: toNullableNumber(form.price_p),
+      price_m: toNullableNumber(form.price_m),
+      price_g: toNullableNumber(form.price_g),
+      price_gg: toNullableNumber(form.price_gg),
     });
   };
 
@@ -237,6 +264,49 @@ const PizzaCategoriesManager: React.FC = () => {
                 value={form.display_order}
                 onChange={(e) => setForm(f => ({ ...f, display_order: Number(e.target.value) }))}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Preço P</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.price_p}
+                  onChange={(e) => setForm(f => ({ ...f, price_p: e.target.value }))}
+                  placeholder="(opcional)"
+                />
+              </div>
+              <div>
+                <Label>Preço M</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.price_m}
+                  onChange={(e) => setForm(f => ({ ...f, price_m: e.target.value }))}
+                  placeholder="(opcional)"
+                />
+              </div>
+              <div>
+                <Label>Preço G</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.price_g}
+                  onChange={(e) => setForm(f => ({ ...f, price_g: e.target.value }))}
+                  placeholder="(opcional)"
+                />
+              </div>
+              <div>
+                <Label>Preço GG</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.price_gg}
+                  onChange={(e) => setForm(f => ({ ...f, price_gg: e.target.value }))}
+                  placeholder="(opcional)"
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
