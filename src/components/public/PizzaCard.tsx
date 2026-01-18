@@ -130,14 +130,19 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
                 className="grid grid-cols-4 gap-2"
               >
                 {(['P', 'M', 'G', 'GG'] as PizzaSize[]).map((size) => (
-                  <div key={size}>
-                    <RadioGroupItem value={size} id={`size-${size}`} className="peer sr-only" />
+                  <div key={size} className="relative">
+                    <RadioGroupItem
+                      value={size}
+                      id={`size-${size}`}
+                      // Esconde totalmente o "bolinho" do rádio (evita duplicação visual tipo "P • P")
+                      className="peer sr-only border-0 opacity-0"
+                    />
                     <Label
                       htmlFor={`size-${size}`}
                       className="flex flex-col items-center justify-center p-3 border rounded-lg cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
                     >
-                      <span className="font-semibold">{size}</span>
-                      <span className="text-xs text-muted-foreground">{sizeLabels[size]}</span>
+                      <span className="font-semibold">{sizeLabels[size]}</span>
+                      <span className="text-xs text-muted-foreground">{size}</span>
                     </Label>
                   </div>
                 ))}
