@@ -35,7 +35,7 @@ const StaffLoginPage: React.FC = () => {
       toast.error(res.error || "Erro ao entrar");
       return;
     }
-    navigate("/funcionario/pedidos", { replace: true });
+    // Wait for StaffContext to confirm role + session and redirect via the effect.
   };
 
   return (

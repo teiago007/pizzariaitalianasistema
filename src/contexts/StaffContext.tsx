@@ -49,6 +49,8 @@ export const StaffProvider = ({ children }: { children: ReactNode }) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
+        // While role check runs, keep layout in loading state to avoid redirecting back to /funcionario.
+        setIsLoading(true);
         // Never call supabase inside onAuthStateChange without deferring.
         setTimeout(() => checkStaffRole(nextSession.user.id), 0);
       } else {
@@ -61,6 +63,7 @@ export const StaffProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        setIsLoading(true);
         checkStaffRole(session.user.id);
       } else {
         setIsLoading(false);
@@ -73,6 +76,7 @@ export const StaffProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { success: false, error: error.message };
       if (data.user) {
