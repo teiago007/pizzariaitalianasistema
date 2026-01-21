@@ -1,13 +1,26 @@
 import React, { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, Shield, User, Users } from "lucide-react";
+import { Pencil, Plus, Search, Shield, Trash2, User, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type ProfileRow = {
   id: string;
@@ -23,10 +36,21 @@ type UserRoleRow = {
   role: "admin" | "user" | "staff";
 };
 
+type StaffForm = {
+  user_id?: string;
+  email: string;
+  full_name: string;
+  password: string;
+};
+
 const AdminStaff: React.FC = () => {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [form, setForm] = useState<StaffForm>({ email: "", full_name: "", password: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const { data: profiles, isLoading: loadingProfiles } = useQuery({
     queryKey: ["admin-staff-profiles"],
@@ -95,6 +119,91 @@ const AdminStaff: React.FC = () => {
     }
   };
 
+  const openCreate = () => {
+    setDialogMode("create");
+    setForm({ email: "", full_name: "", password: "" });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (p: ProfileRow) => {
+    setDialogMode("edit");
+    setForm({ user_id: p.user_id, email: p.email || "", full_name: p.full_name || "", password: "" });
+    setDialogOpen(true);
+  };
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["admin-staff-profiles"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin-staff-roles"] });
+  };
+
+  const submitForm = async () => {
+    setSubmitting(true);
+    try {
+      const email = form.email.trim().toLowerCase();
+      const full_name = form.full_name.trim();
+      const password = form.password;
+
+      if (!email || !email.includes("@")) throw new Error("Email inválido");
+
+      if (dialogMode === "create") {
+        if (!password || password.length < 6) throw new Error("Senha deve ter ao menos 6 caracteres");
+
+        const { data, error } = await supabase.functions.invoke("manage-staff-user", {
+          body: {
+            action: "create",
+            email,
+            password,
+            full_name: full_name || null,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        toast.success("Funcionário criado");
+      } else {
+        if (!form.user_id) throw new Error("user_id ausente");
+
+        const { data, error } = await supabase.functions.invoke("manage-staff-user", {
+          body: {
+            action: "update",
+            user_id: form.user_id,
+            email,
+            full_name: full_name || null,
+            ...(password ? { password } : {}),
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        toast.success("Funcionário atualizado");
+      }
+
+      setDialogOpen(false);
+      await refresh();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao salvar funcionário");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteStaffUser = async (userId: string) => {
+    setSavingUserId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-staff-user", {
+        body: { action: "delete", user_id: userId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Funcionário removido");
+      await refresh();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao remover funcionário");
+    } finally {
+      setSavingUserId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -108,14 +217,76 @@ const AdminStaff: React.FC = () => {
             <Users className="w-5 h-5 text-primary" />
             Gerenciar acessos
           </CardTitle>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por email, nome ou user_id"
-              className="pl-9"
-            />
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar por email, nome ou user_id"
+                className="pl-9"
+              />
+            </div>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" onClick={openCreate} className="sm:self-start">
+                  <Plus className="w-4 h-4" />
+                  Novo funcionário
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{dialogMode === "create" ? "Criar funcionário" : "Editar funcionário"}</DialogTitle>
+                  <DialogDescription>
+                    {dialogMode === "create"
+                      ? "Defina email, nome e senha para o funcionário entrar no caixa." 
+                      : "Atualize email, nome e (opcionalmente) uma nova senha."}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      value={form.email}
+                      onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                      placeholder="email@exemplo.com"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Nome</Label>
+                    <Input
+                      value={form.full_name}
+                      onChange={(e) => setForm((s) => ({ ...s, full_name: e.target.value }))}
+                      placeholder="Nome do funcionário"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{dialogMode === "create" ? "Senha" : "Nova senha (opcional)"}</Label>
+                    <Input
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
+                      placeholder={dialogMode === "create" ? "mínimo 6 caracteres" : "deixe em branco para manter"}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={submitForm} disabled={submitting}>
+                    {submitting ? "Salvando..." : "Salvar"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -155,6 +326,43 @@ const AdminStaff: React.FC = () => {
                       disabled={disabled || savingUserId === p.user_id}
                       onCheckedChange={(checked) => setStaff(p.user_id, checked)}
                     />
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      disabled={savingUserId === p.user_id}
+                      onClick={() => openEdit(p)}
+                      title="Editar"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          disabled={disabled || savingUserId === p.user_id}
+                          title={disabled ? "Não é possível excluir um admin" : "Excluir"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir funcionário?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Isso vai remover a conta e o acesso permanentemente. Essa ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteStaffUser(p.user_id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               );
@@ -166,8 +374,7 @@ const AdminStaff: React.FC = () => {
               type="button"
               variant="outline"
               onClick={() => {
-                queryClient.invalidateQueries({ queryKey: ["admin-staff-profiles"] });
-                queryClient.invalidateQueries({ queryKey: ["admin-staff-roles"] });
+                refresh();
               }}
             >
               Atualizar lista
