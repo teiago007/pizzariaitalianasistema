@@ -17,7 +17,19 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
+    // Fail-safe: avoid blank screen if a component renders outside provider for any reason.
+    // The app should normally wrap everything with <CartProvider> in App.tsx.
+    console.warn('useCart used outside CartProvider; returning empty cart (fail-safe)');
+    return {
+      items: [],
+      addPizza: () => undefined,
+      addProduct: () => undefined,
+      removeItem: () => undefined,
+      updateQuantity: () => undefined,
+      clearCart: () => undefined,
+      total: 0,
+      itemCount: 0,
+    };
   }
   return context;
 };
