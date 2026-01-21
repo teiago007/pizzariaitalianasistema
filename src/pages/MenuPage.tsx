@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Loader2, ArrowRight } from 'lucide-react';
+import { Search, Loader2, ArrowRight, Minus, Plus } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { PizzaCard } from '@/components/public/PizzaCard';
 import { ProductCard } from '@/components/public/ProductCard';
@@ -141,6 +141,7 @@ const MenuPage: React.FC = () => {
 
   const [selectedSodaSize, setSelectedSodaSize] = useState<string | null>(null);
   const [selectedSodaProductId, setSelectedSodaProductId] = useState<string | null>(null);
+  const [selectedSodaQty, setSelectedSodaQty] = useState<number>(1);
 
   // Se o filtro/busca mudar e o tamanho selecionado não existir mais, limpa a seleção
   useEffect(() => {
@@ -152,6 +153,7 @@ const MenuPage: React.FC = () => {
 
   useEffect(() => {
     setSelectedSodaProductId(null);
+    setSelectedSodaQty(1);
   }, [selectedSodaSize]);
 
   return (
@@ -342,7 +344,7 @@ const MenuPage: React.FC = () => {
                 <section className="mb-10">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <h2 className="font-display text-xl font-semibold text-foreground">Refrigerantes</h2>
-                    <Badge variant="secondary">Escolha o tamanho e depois o refrigerante</Badge>
+                     <Badge variant="secondary">Escolha o tamanho, o refrigerante e a quantidade</Badge>
                   </div>
 
                   <Card className="mb-4">
@@ -354,7 +356,7 @@ const MenuPage: React.FC = () => {
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-50 bg-popover text-popover-foreground">
                               {refrigerantes.orderedSizes.map((size) => (
                                 <SelectItem key={size} value={size}>
                                   {size === 'un' ? 'Unidade' : size.toUpperCase()}
@@ -374,7 +376,7 @@ const MenuPage: React.FC = () => {
                             <SelectTrigger>
                               <SelectValue placeholder={selectedSodaSize ? 'Selecione o refrigerante' : 'Selecione um tamanho primeiro'} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-50 bg-popover text-popover-foreground">
                               {(() => {
                                 if (!selectedSodaSize) return null;
                                 const itemsForSize = refrigerantes.bySize[selectedSodaSize] || [];
@@ -397,14 +399,42 @@ const MenuPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-end">
+                      <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                        <div className="flex items-center gap-2 sm:mr-auto">
+                          <p className="text-sm font-medium text-foreground">Quantidade</p>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => setSelectedSodaQty((q) => Math.max(1, q - 1))}
+                              disabled={selectedSodaQty <= 1}
+                              aria-label="Diminuir quantidade"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </Button>
+                            <div className="min-w-10 text-center text-sm font-medium tabular-nums text-foreground">
+                              {selectedSodaQty}
+                            </div>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => setSelectedSodaQty((q) => Math.min(99, q + 1))}
+                              aria-label="Aumentar quantidade"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
                         <Button
                           onClick={() => {
                             if (!selectedSodaSize || !selectedSodaProductId) return;
                             const list = refrigerantes.bySize[selectedSodaSize] || [];
                             const product = list.find((p) => p.id === selectedSodaProductId);
                             if (!product) return;
-                            addProduct(product);
+                            addProduct(product, selectedSodaQty);
                           }}
                           disabled={!selectedSodaSize || !selectedSodaProductId}
                         >
