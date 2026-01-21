@@ -25,17 +25,20 @@ export const StaffProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isStaff, setIsStaff] = useState(false);
 
-  const checkStaffRole = async (userId: string) => {
+  const checkStaffRole = async (userId: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase.rpc("has_role", {
         _user_id: userId,
         _role: "staff",
       });
       if (error) throw error;
-      setIsStaff(data === true);
+      const ok = data === true;
+      setIsStaff(ok);
+      return ok;
     } catch (e) {
       console.error("Error checking staff role:", e);
       setIsStaff(false);
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +76,12 @@ export const StaffProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { success: false, error: error.message };
       if (data.user) {
-        await checkStaffRole(data.user.id);
+        const ok = await checkStaffRole(data.user.id);
+        if (!ok) {
+          // Prevent redirect loops: if user is not staff, do not allow entering staff area.
+          await supabase.auth.signOut();
+          return { success: false, error: "Sem permissão de funcionário" };
+        }
       }
       return { success: true };
     } catch (e: any) {

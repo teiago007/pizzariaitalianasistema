@@ -140,6 +140,7 @@ const MenuPage: React.FC = () => {
   }, [filteredProducts]);
 
   const [selectedSodaSize, setSelectedSodaSize] = useState<string | null>(null);
+  const [selectedSodaProductId, setSelectedSodaProductId] = useState<string | null>(null);
 
   // Se o filtro/busca mudar e o tamanho selecionado não existir mais, limpa a seleção
   useEffect(() => {
@@ -148,6 +149,10 @@ const MenuPage: React.FC = () => {
       setSelectedSodaSize(null);
     }
   }, [refrigerantes.orderedSizes, selectedSodaSize]);
+
+  useEffect(() => {
+    setSelectedSodaProductId(null);
+  }, [selectedSodaSize]);
 
   return (
     <div className="min-h-screen py-8 md:py-12">
@@ -332,7 +337,7 @@ const MenuPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Refrigerantes: escolher tamanho -> escolher sabor */}
+               {/* Refrigerantes: escolher tamanho -> escolher refrigerante */}
               {refrigerantes.items.length > 0 && (
                 <section className="mb-10">
                   <div className="flex items-center justify-between gap-3 mb-4">
@@ -342,73 +347,73 @@ const MenuPage: React.FC = () => {
 
                   <Card className="mb-4">
                     <CardContent className="p-4">
-                      <div className="flex flex-wrap gap-2">
-                        {refrigerantes.orderedSizes.map((size) => (
-                          <Button
-                            key={size}
-                            type="button"
-                            variant={selectedSodaSize === size ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSelectedSodaSize(size)}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="md:col-span-1">
+                          <p className="text-sm font-medium text-foreground mb-1">Tamanho</p>
+                          <Select value={selectedSodaSize ?? ''} onValueChange={(v) => setSelectedSodaSize(v || null)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {refrigerantes.orderedSizes.map((size) => (
+                                <SelectItem key={size} value={size}>
+                                  {size === 'un' ? 'Unidade' : size.toUpperCase()}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <p className="text-sm font-medium text-foreground mb-1">Refrigerante</p>
+                          <Select
+                            value={selectedSodaProductId ?? ''}
+                            onValueChange={(v) => setSelectedSodaProductId(v || null)}
+                            disabled={!selectedSodaSize}
                           >
-                            Refrigerante {size === 'un' ? 'Unidade' : size.toUpperCase()}
-                          </Button>
-                        ))}
+                            <SelectTrigger>
+                              <SelectValue placeholder={selectedSodaSize ? 'Selecione o refrigerante' : 'Selecione um tamanho primeiro'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(() => {
+                                if (!selectedSodaSize) return null;
+                                const itemsForSize = refrigerantes.bySize[selectedSodaSize] || [];
+                                const visibleItems = onlyAvailableProducts ? itemsForSize.filter((p) => p.available) : itemsForSize;
+                                if (visibleItems.length === 0) {
+                                  return (
+                                    <SelectItem value="__none__" disabled>
+                                      Nenhum disponível
+                                    </SelectItem>
+                                  );
+                                }
+                                return visibleItems.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {stripDrinkSize(p.name)} — R$ {p.price.toFixed(2)}
+                                  </SelectItem>
+                                ));
+                              })()}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-end">
+                        <Button
+                          onClick={() => {
+                            if (!selectedSodaSize || !selectedSodaProductId) return;
+                            const list = refrigerantes.bySize[selectedSodaSize] || [];
+                            const product = list.find((p) => p.id === selectedSodaProductId);
+                            if (!product) return;
+                            addProduct(product);
+                          }}
+                          disabled={!selectedSodaSize || !selectedSodaProductId}
+                        >
+                          Adicionar
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(() => {
-                      if (!selectedSodaSize) {
-                        return (
-                          <div className="col-span-full text-center py-8">
-                            <p className="text-muted-foreground">Selecione um tamanho para ver os refrigerantes disponíveis.</p>
-                          </div>
-                        );
-                      }
-
-                      const itemsForSize = refrigerantes.bySize[selectedSodaSize] || [];
-                      const visibleItems = onlyAvailableProducts
-                        ? itemsForSize.filter((p) => p.available)
-                        : itemsForSize;
-
-                      if (visibleItems.length === 0) {
-                        return (
-                          <div className="col-span-full text-center py-8">
-                            <p className="text-muted-foreground">
-                              Nenhum refrigerante {onlyAvailableProducts ? 'disponível ' : ''}para este tamanho.
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return visibleItems.map((product, index) => (
-                        <motion.div
-                          key={product.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.03 }}
-                        >
-                          <Card className="overflow-hidden h-full">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-foreground truncate">{stripDrinkSize(product.name)}</p>
-                                  <p className="text-sm text-muted-foreground">{selectedSodaSize === 'un' ? '' : selectedSodaSize.toUpperCase()}</p>
-                                  <p className="text-lg font-bold text-primary mt-1">R$ {product.price.toFixed(2)}</p>
-                                </div>
-                                <Button onClick={() => addProduct(product)} disabled={!product.available}>
-                                  Adicionar
-                                  <ArrowRight className="w-4 h-4 ml-2" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                         </motion.div>
-                      ));
-                    })()}
-                  </div>
                 </section>
               )}
 
