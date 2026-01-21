@@ -34,6 +34,7 @@ const StaffOrdersPage: React.FC = () => {
   const { items, total, addPizza, addProduct, removeItem, updateQuantity, clearCart } = useCart();
 
   const [tableNumber, setTableNumber] = useState("");
+  const [observations, setObservations] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,7 +62,7 @@ const StaffOrdersPage: React.FC = () => {
         name: `Mesa ${tableNumber.trim()}`,
         phone: "00000000",
         address: `Mesa ${tableNumber.trim()}`,
-        complement: "Pedido presencial",
+        complement: observations.trim() ? observations.trim() : "Pedido presencial",
       };
 
       const { data, error } = await supabase
@@ -88,6 +89,7 @@ const StaffOrdersPage: React.FC = () => {
 
       clearCart();
       setTableNumber("");
+      setObservations("");
       toast.success(`Pedido criado (${data.id.slice(0, 8)})`);
     } catch (e: any) {
       console.error(e);
@@ -121,6 +123,16 @@ const StaffOrdersPage: React.FC = () => {
               <div>
                 <Label>Mesa/Comanda</Label>
                 <Input value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} placeholder="Ex: 12" className="mt-1.5" />
+              </div>
+
+              <div>
+                <Label>Observações</Label>
+                <Input
+                  value={observations}
+                  onChange={(e) => setObservations(e.target.value)}
+                  placeholder="Ex: sem gelo, sem cebola, cliente aguardando..."
+                  className="mt-1.5"
+                />
               </div>
 
               <div>

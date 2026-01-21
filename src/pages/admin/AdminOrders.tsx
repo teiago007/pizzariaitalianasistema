@@ -192,6 +192,7 @@ const AdminOrders: React.FC = () => {
           <h1>🍕 ${settings.name}</h1>
           <div class="info"><strong>Pedido:</strong> ${order.id.substring(0, 8).toUpperCase()}</div>
           <div class="info"><strong>Data:</strong> ${new Date(order.createdAt).toLocaleString('pt-BR')}</div>
+          ${order.tableNumber ? `<div class="info"><strong>Mesa/Comanda:</strong> ${order.tableNumber}</div>` : ''}
           <div class="info"><strong>Cliente:</strong> ${order.customer.name}</div>
           <div class="info"><strong>Telefone:</strong> ${order.customer.phone}</div>
           <div class="info"><strong>Endereço:</strong> ${order.customer.address}</div>
@@ -224,6 +225,12 @@ const AdminOrders: React.FC = () => {
   const OrderDetails: React.FC<{ order: Order }> = ({ order }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
+        {order.tableNumber && (
+          <div className="col-span-2">
+            <p className="text-sm text-muted-foreground">Mesa/Comanda</p>
+            <p className="font-medium">{order.tableNumber}</p>
+          </div>
+        )}
         <div>
           <p className="text-sm text-muted-foreground">Cliente</p>
           <p className="font-medium">{order.customer.name}</p>
@@ -402,6 +409,16 @@ const AdminOrders: React.FC = () => {
                               <p className="text-sm text-muted-foreground">
                                 {order.customer.name} • {order.customer.phone}
                               </p>
+                              {order.tableNumber && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Mesa/Comanda: <span className="font-medium text-foreground">{order.tableNumber}</span>
+                                </p>
+                              )}
+                              {order.customer.complement && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Obs: <span className="font-medium text-foreground">{order.customer.complement}</span>
+                                </p>
+                              )}
                               <p className="text-xs text-muted-foreground mt-1">
                                 {new Date(order.createdAt).toLocaleString('pt-BR')}
                               </p>

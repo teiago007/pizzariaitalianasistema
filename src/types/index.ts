@@ -100,6 +100,12 @@ export interface Order {
   payment: PaymentInfo;
   status: OrderStatus;
   total: number;
+  /** 'in_store' para pedidos presenciais (garçom), ou null para pedidos comuns */
+  orderOrigin?: string;
+  /** Mesa/comanda quando pedido for presencial */
+  tableNumber?: string;
+  /** Usuário autenticado que criou o pedido (ex: staff) */
+  createdByUserId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
