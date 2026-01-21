@@ -9,6 +9,9 @@ interface DbOrder {
   customer_phone: string;
   customer_address: string;
   customer_complement: string | null;
+  order_origin?: string | null;
+  table_number?: string | null;
+  created_by_user_id?: string | null;
   items: any;
   payment_method: string;
   needs_change: boolean | null;
@@ -36,6 +39,9 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
   },
   total: Number(dbOrder.total),
   status: dbOrder.status as OrderStatus,
+  orderOrigin: dbOrder.order_origin || undefined,
+  tableNumber: dbOrder.table_number || undefined,
+  createdByUserId: dbOrder.created_by_user_id || undefined,
   createdAt: new Date(dbOrder.created_at),
   updatedAt: new Date(dbOrder.updated_at),
 });
