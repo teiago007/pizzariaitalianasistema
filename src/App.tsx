@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminProvider } from "@/contexts/AdminContext";
+import { StaffProvider } from "@/contexts/StaffContext";
 
 // Public Pages
 import { PublicLayout } from "@/components/public/PublicLayout";
@@ -24,6 +25,12 @@ import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
+// Staff Pages
+import StaffLoginPage from "@/pages/staff/StaffLoginPage";
+import StaffLayout from "@/pages/staff/StaffLayout";
+import StaffOrdersPage from "@/pages/staff/StaffOrdersPage";
+import StaffCashierPage from "@/pages/staff/StaffCashierPage";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,10 +41,11 @@ const App = () => (
       <StoreProvider>
         <CartProvider>
           <AdminProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
+            <StaffProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
                 {/* Public Routes - No Login Required */}
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<HomePage />} />
@@ -58,10 +66,18 @@ const App = () => (
                   <Route path="configuracoes" element={<AdminSettings />} />
                 </Route>
 
+                  {/* Staff Routes */}
+                  <Route path="/funcionario" element={<StaffLoginPage />} />
+                  <Route path="/funcionario" element={<StaffLayout />}>
+                    <Route path="pedidos" element={<StaffOrdersPage />} />
+                    <Route path="caixa" element={<StaffCashierPage />} />
+                  </Route>
+
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
+                </Routes>
+              </BrowserRouter>
+            </StaffProvider>
           </AdminProvider>
         </CartProvider>
       </StoreProvider>
