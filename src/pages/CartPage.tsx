@@ -28,6 +28,11 @@ const parseDrinkSize = (name: string) => {
 
 const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
 
+const safeMoney = (value: unknown) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings } = useStore();
@@ -64,14 +69,14 @@ const CartPage: React.FC = () => {
 
         <div className="flex-1">
           <h3 className="font-semibold text-foreground">
-            Pizza {item.flavors.map(f => f.name).join(' + ')}
+            Pizza {(item.flavors || []).length > 0 ? (item.flavors || []).map((f) => f.name).join(' + ') : '(sabores não informados)'}
           </h3>
           <p className="text-sm text-muted-foreground">
             {sizeLabels[item.size]}
             {item.border && ` • Borda ${item.border.name}`}
           </p>
           <p className="text-primary font-bold mt-1">
-            R$ {item.unitPrice.toFixed(2)}
+            R$ {safeMoney(item.unitPrice).toFixed(2)}
           </p>
         </div>
 
@@ -163,7 +168,7 @@ const CartPage: React.FC = () => {
             );
           })()}
           <p className="text-primary font-bold mt-1">
-            R$ {item.unitPrice.toFixed(2)}
+            R$ {safeMoney(item.unitPrice).toFixed(2)}
           </p>
         </div>
 
@@ -268,7 +273,7 @@ const CartPage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span>R$ {total.toFixed(2)}</span>
+                  <span>R$ {safeMoney(total).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Entrega</span>
@@ -277,7 +282,7 @@ const CartPage: React.FC = () => {
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span className="text-primary">R$ {total.toFixed(2)}</span>
+                  <span className="text-primary">R$ {safeMoney(total).toFixed(2)}</span>
                 </div>
               </div>
 
