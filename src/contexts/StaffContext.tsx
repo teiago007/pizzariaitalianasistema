@@ -78,17 +78,33 @@ export const StaffProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        setIsLoading(false);
+        return { success: false, error: error.message };
+      }
+
+      // Make auth state available immediately (don't rely solely on onAuthStateChange timing).
+      setSession(data.session ?? null);
+      setUser(data.user ?? null);
+
       if (data.user) {
         const ok = await checkStaffRole(data.user.id);
         if (!ok) {
           // Prevent redirect loops: if user is not staff, do not allow entering staff area.
           await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setIsStaff(false);
           return { success: false, error: "Sem permissão de funcionário" };
         }
+      } else {
+        setIsLoading(false);
+        return { success: false, error: "Usuário não encontrado" };
       }
+
       return { success: true };
     } catch (e: any) {
+      setIsLoading(false);
       return { success: false, error: e?.message };
     }
   };
