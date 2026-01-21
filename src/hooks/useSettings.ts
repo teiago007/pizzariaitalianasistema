@@ -38,7 +38,7 @@ export function useSettings() {
     name: 'Pizzaria Italiana',
     isOpen: true,
     whatsapp: '(89) 98134-7052',
-    address: 'Av. Manoel Bezerra | Nº 189 | Centro',
+    address: 'Avenida Manoel Bezerra | Nº189 | Centro',
     primaryColor: '#C41E3A',
     secondaryColor: '#228B22',
     accentColor: '#FFFFFF',

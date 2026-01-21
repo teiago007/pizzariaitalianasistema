@@ -129,8 +129,8 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   } : {
     name: 'Pizzaria Italiana',
     isOpen: true,
-    whatsapp: '',
-    address: '',
+    whatsapp: '(89) 98134-7052',
+    address: 'Avenida Manoel Bezerra | Nº189 | Centro',
     primaryColor: '#c41e3a',
     secondaryColor: '#228b22',
     accentColor: '#ffffff',
