@@ -14,10 +14,88 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_register_movements: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          note: string | null
+          shift_id: string
+          type: Database["public"]["Enums"]["cash_movement_type"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          note?: string | null
+          shift_id: string
+          type: Database["public"]["Enums"]["cash_movement_type"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string | null
+          shift_id?: string
+          type?: Database["public"]["Enums"]["cash_movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_register_movements_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "cash_register_shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_register_shifts: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closing_balance: number | null
+          created_at: string
+          id: string
+          note: string | null
+          opened_at: string
+          opened_by: string
+          opening_balance: number
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          opened_at?: string
+          opened_by: string
+          opening_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           change_for: number | null
           created_at: string
+          created_by_user_id: string | null
           customer_address: string
           customer_complement: string | null
           customer_name: string
@@ -25,15 +103,18 @@ export type Database = {
           id: string
           items: Json
           needs_change: boolean | null
+          order_origin: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id: string | null
           status: Database["public"]["Enums"]["order_status"]
+          table_number: string | null
           total: number
           updated_at: string
         }
         Insert: {
           change_for?: number | null
           created_at?: string
+          created_by_user_id?: string | null
           customer_address: string
           customer_complement?: string | null
           customer_name: string
@@ -41,15 +122,18 @@ export type Database = {
           id?: string
           items: Json
           needs_change?: boolean | null
+          order_origin?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          table_number?: string | null
           total: number
           updated_at?: string
         }
         Update: {
           change_for?: number | null
           created_at?: string
+          created_by_user_id?: string | null
           customer_address?: string
           customer_complement?: string | null
           customer_name?: string
@@ -57,9 +141,11 @@ export type Database = {
           id?: string
           items?: Json
           needs_change?: boolean | null
+          order_origin?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          table_number?: string | null
           total?: number
           updated_at?: string
         }
@@ -406,6 +492,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "staff"
+      cash_movement_type: "SALE" | "SUPPLY" | "WITHDRAW"
       order_status:
         | "PENDING"
         | "CONFIRMED"
@@ -543,6 +630,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "staff"],
+      cash_movement_type: ["SALE", "SUPPLY", "WITHDRAW"],
       order_status: [
         "PENDING",
         "CONFIRMED",
