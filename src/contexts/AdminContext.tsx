@@ -31,23 +31,30 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // IMPORTANT: avoid calling other supabase methods inside onAuthStateChange.
+    // Keep it synchronous and defer any RPC checks.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        checkAdminRole(session.user.id);
+        setIsLoading(true);
+        // Defer role check to prevent auth deadlocks/races affecting other listeners (e.g., StaffContext)
+        setTimeout(() => {
+          checkAdminRole(session.user.id);
+        }, 0);
       } else {
+        setIsAdmin(false);
         setIsLoading(false);
       }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Get initial session AFTER the listener is registered
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        setIsLoading(true);
         checkAdminRole(session.user.id);
       } else {
-        setIsAdmin(false);
         setIsLoading(false);
       }
     });
