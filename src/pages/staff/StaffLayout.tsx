@@ -21,7 +21,16 @@ const StaffLayout: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) return <Navigate to="/funcionario" replace />;
+  // With nested routing under /funcionario:
+  // - /funcionario (index) shows login when not authenticated
+  // - /funcionario/* redirects back to /funcionario when not authenticated
+  if (!isAuthenticated) {
+    if (location.pathname !== "/funcionario") return <Navigate to="/funcionario" replace />;
+    return <Outlet />;
+  }
+
+  // If authenticated and user hits the staff root, send them to the default page.
+  if (location.pathname === "/funcionario") return <Navigate to="/funcionario/pedidos" replace />;
 
   const navItems = [
     { path: "/funcionario/pedidos", label: "Pedidos", icon: ClipboardList },
