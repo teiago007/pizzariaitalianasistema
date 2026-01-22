@@ -111,7 +111,9 @@ const StaffCheckoutPage: React.FC = () => {
         .from("orders")
         .insert({
           customer_name: "Atendimento",
-          customer_phone: "-",
+           // Keep a valid placeholder to satisfy any public validations/policies.
+           // Real staff orders are identified via order_origin='in_store' + created_by_user_id.
+           customer_phone: "0000000000",
           customer_address: "Balcão",
           customer_complement: parsed.data.note?.trim() ? parsed.data.note.trim() : null,
           items: items as unknown as import("@/integrations/supabase/types").Json,
