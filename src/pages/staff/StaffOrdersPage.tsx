@@ -74,10 +74,10 @@ const StaffOrdersPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link to="/carrinho">
+            <Link to="/funcionario/carrinho">
               <Button variant="outline">Ver carrinho</Button>
             </Link>
-            <Link to="/checkout">
+            <Link to="/funcionario/checkout">
               <Button>Finalizar</Button>
             </Link>
           </div>
