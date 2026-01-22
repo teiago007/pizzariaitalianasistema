@@ -17,6 +17,36 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 
+const TZ = 'America/Sao_Paulo';
+
+const escapeHtml = (s: string) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const dateISOInTZ = (d: Date) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+};
+
+const addDaysISO = (date: string, days: number) => {
+  const dd = new Date(`${date}T00:00:00-03:00`);
+  dd.setDate(dd.getDate() + days);
+  const y = dd.getFullYear();
+  const m = String(dd.getMonth() + 1).padStart(2, '0');
+  const day = String(dd.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const AdminOrders: React.FC = () => {
   const { orders, loading, updateOrderStatus, deleteOrder } = useOrders();
   const { settings } = useSettings();
@@ -174,43 +204,122 @@ const AdminOrders: React.FC = () => {
     await deleteOrder(orderId);
   };
 
-  const handlePrint = (order: Order) => {
+  const handlePrint = async (order: Order) => {
+    // Sequencial simples do dia: conta quantos pedidos existem antes deste (pela data/hora) no mesmo dia.
+    let seqOfDay: number | undefined;
+    try {
+      const orderDateISO = dateISOInTZ(new Date(order.createdAt));
+      const nextDateISO = addDaysISO(orderDateISO, 1);
+      const dayStart = `${orderDateISO}T00:00:00-03:00`;
+      const orderTimeISO = new Date(order.createdAt).toISOString();
+
+      const { count, error } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', dayStart)
+        .lt('created_at', orderTimeISO);
+
+      if (!error && typeof count === 'number') seqOfDay = count + 1;
+      // fallback: if count fails (permissions), we just omit seq
+      void nextDateISO;
+    } catch {
+      // ignore
+    }
+
+    const fmt = (n: number) => Number(n || 0).toFixed(2);
+    const hasLogo = Boolean((settings as any).logo);
+    const logoUrl = (settings as any).logo || '';
+
+    const itemsHtml = order.items
+      .map((item) => {
+        if (item.type === 'pizza') {
+          const pizza = item as any;
+          const flavors = (pizza.flavors || []).map((f: any) => f.name).join(' + ') || 'Pizza';
+          const border = pizza.border?.name ? ` • Borda ${pizza.border.name}` : '';
+          const obs = pizza.note ? `<div class="muted">Obs: ${escapeHtml(String(pizza.note))}</div>` : '';
+          return `
+            <div class="row">
+              <div class="qty">${pizza.quantity}x</div>
+              <div class="name">
+                <div class="title">Pizza ${escapeHtml(flavors)} (${escapeHtml(String(pizza.size))})</div>
+                ${border ? `<div class="muted">${escapeHtml(border.replace(/^\s*•\s*/, ''))}</div>` : ''}
+                ${obs}
+              </div>
+              <div class="price">R$ ${fmt(pizza.unitPrice * pizza.quantity)}</div>
+            </div>
+          `;
+        }
+        const p = (item as any).product;
+        return `
+          <div class="row">
+            <div class="qty">${item.quantity}x</div>
+            <div class="name"><div class="title">${escapeHtml(formatProductLabel(p?.name || 'Produto'))}</div></div>
+            <div class="price">R$ ${fmt(item.unitPrice * item.quantity)}</div>
+          </div>
+        `;
+      })
+      .join('');
+
     const printContent = `
       <html>
         <head>
           <title>Pedido ${order.id.substring(0, 8).toUpperCase()}</title>
           <style>
-            body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; }
-            h1 { font-size: 18px; text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-            .info { margin: 10px 0; }
-            .item { margin: 5px 0; }
-            .total { font-weight: bold; border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 12px; }
+            :root { --paper: 80mm; --m: 3mm; --font: 11px; --font-sm: 10px; --font-lg: 14px; }
+            @page { size: var(--paper) auto; margin: var(--m); }
+            html, body { width: var(--paper); margin: 0; padding: 0; color: #000;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+              font-size: var(--font);
+              -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            }
+            .wrap { padding: var(--m); }
+            .center { text-align: center; }
+            .muted { color: #222; font-size: var(--font-sm); }
+            .hr { border-top: 1px dashed #000; margin: 8px 0; }
+            .logo { display: ${hasLogo ? 'block' : 'none'}; width: 100%; max-height: 20mm; object-fit: contain; margin: 0 auto 6px auto; }
+            .store { font-size: var(--font-lg); font-weight: 700; letter-spacing: 0.5px; }
+            .row { display: grid; grid-template-columns: 10mm 1fr auto; gap: 6px; align-items: start; margin: 6px 0; }
+            .qty { font-weight: 700; }
+            .title { font-weight: 700; }
+            .price { font-weight: 700; white-space: nowrap; text-align: right; }
+            .totals { margin-top: 10px; padding-top: 8px; border-top: 2px dashed #000; }
+            .total-line { display: flex; justify-content: space-between; font-size: var(--font-lg); font-weight: 800; }
           </style>
         </head>
         <body>
-          <h1>🍕 ${settings.name}</h1>
-          <div class="info"><strong>Pedido:</strong> ${order.id.substring(0, 8).toUpperCase()}</div>
-          <div class="info"><strong>Data:</strong> ${new Date(order.createdAt).toLocaleString('pt-BR')}</div>
-          ${order.tableNumber ? `<div class="info"><strong>Mesa/Comanda:</strong> ${order.tableNumber}</div>` : ''}
-          <div class="info"><strong>Cliente:</strong> ${order.customer.name}</div>
-          <div class="info"><strong>Telefone:</strong> ${order.customer.phone}</div>
-          <div class="info"><strong>Endereço:</strong> ${order.customer.address}</div>
-          ${order.customer.complement ? `<div class="info"><strong>Complemento:</strong> ${order.customer.complement}</div>` : ''}
-          <hr/>
-          <div><strong>Itens:</strong></div>
-           ${order.items.map(item => {
-             if (item.type === 'pizza') {
-               const note = (item as any).note ? ` <br/><small>Obs: ${(item as any).note}</small>` : '';
-               return `<div class="item">${item.quantity}x Pizza ${item.flavors.map(f => f.name).join(' + ')} (${item.size}) - R$ ${(item.unitPrice * item.quantity).toFixed(2)}${note}</div>`;
-             } else {
-               return `<div class="item">${item.quantity}x ${formatProductLabel(item.product.name)} - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
-             }
-           }).join('')}
-          <div class="total">TOTAL: R$ ${order.total.toFixed(2)}</div>
-          <div class="info"><strong>Pagamento:</strong> ${paymentLabels[order.payment.method]}</div>
-          ${order.payment.needsChange ? `<div class="info"><strong>Troco para:</strong> R$ ${order.payment.changeFor?.toFixed(2)}</div>` : ''}
-          <div class="footer">Obrigado pela preferência!</div>
+          <div class="wrap">
+            <img class="logo" src="${escapeHtml(String(logoUrl))}" alt="Logo" />
+            <div class="center store">${escapeHtml(String(settings.name || ''))}</div>
+            <div class="center muted">${escapeHtml(String(settings.address || ''))}</div>
+
+            <div class="hr"></div>
+            <div>
+              <div><strong>Pedido:</strong> ${order.id.substring(0, 8).toUpperCase()}</div>
+              ${seqOfDay ? `<div><strong>Seq. do dia:</strong> ${seqOfDay}</div>` : ''}
+              ${order.tableNumber ? `<div><strong>Mesa/Comanda:</strong> ${escapeHtml(String(order.tableNumber))}</div>` : ''}
+              <div><strong>Data:</strong> ${escapeHtml(new Date(order.createdAt).toLocaleString('pt-BR'))}</div>
+              <div><strong>Pagamento:</strong> ${escapeHtml(String(paymentLabels[order.payment.method]))}</div>
+              ${order.payment.needsChange ? `<div><strong>Troco para:</strong> R$ ${fmt(order.payment.changeFor || 0)}</div>` : ''}
+            </div>
+
+            <div class="hr"></div>
+            <div><strong>Cliente</strong></div>
+            <div>${escapeHtml(order.customer.name)}</div>
+            <div class="muted">${escapeHtml(order.customer.phone)}</div>
+            <div class="muted">${escapeHtml(order.customer.address)}</div>
+            ${order.customer.complement ? `<div class="muted">${escapeHtml(order.customer.complement)}</div>` : ''}
+
+            <div class="hr"></div>
+            <div><strong>Itens</strong></div>
+            ${itemsHtml}
+
+            <div class="totals">
+              <div class="total-line"><span>TOTAL</span><span>R$ ${fmt(order.total)}</span></div>
+            </div>
+
+            <div class="hr"></div>
+            <div class="center muted">Obrigado pela preferência!</div>
+          </div>
         </body>
       </html>
     `;
