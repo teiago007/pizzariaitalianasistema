@@ -14,5 +14,8 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // Prevent "Invalid hook call" / dispatcher null issues caused by multiple React copies
+    // (can happen with Vite dependency pre-bundling and linked/transitive deps).
+    dedupe: ["react", "react-dom"],
   },
 }));
