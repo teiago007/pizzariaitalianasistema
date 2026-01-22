@@ -91,6 +91,24 @@ export type Database = {
         }
         Relationships: []
       }
+      order_daily_counters: {
+        Row: {
+          last_seq: number
+          order_date: string
+          updated_at: string
+        }
+        Insert: {
+          last_seq?: number
+          order_date: string
+          updated_at?: string
+        }
+        Update: {
+          last_seq?: number
+          order_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           change_for: number | null
@@ -106,6 +124,7 @@ export type Database = {
           order_origin: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id: string | null
+          seq_of_day: number | null
           status: Database["public"]["Enums"]["order_status"]
           table_number: string | null
           total: number
@@ -125,6 +144,7 @@ export type Database = {
           order_origin?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id?: string | null
+          seq_of_day?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null
           total: number
@@ -144,6 +164,7 @@ export type Database = {
           order_origin?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id?: string | null
+          seq_of_day?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null
           total?: number
@@ -489,6 +510,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_order_seq: { Args: { p_date: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "user" | "staff"
