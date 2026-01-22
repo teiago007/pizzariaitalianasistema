@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, Clock, Copy } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -35,6 +35,13 @@ const safeMoney = (value: unknown) => {
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isStaffFlow = location.pathname.startsWith('/funcionario');
+  const paths = {
+    menu: isStaffFlow ? '/funcionario/pedidos' : '/cardapio',
+    cart: isStaffFlow ? '/funcionario/carrinho' : '/carrinho',
+    checkout: isStaffFlow ? '/funcionario/checkout' : '/checkout',
+  };
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
   const { items, removeItem, updateQuantity, total, clearCart, addPizza } = useCart();
@@ -223,7 +230,7 @@ const CartPage: React.FC = () => {
           <p className="text-muted-foreground mb-6">
             Adicione itens deliciosos ao seu carrinho!
           </p>
-          <Link to="/cardapio">
+          <Link to={paths.menu}>
             <Button size="lg">
               Ver Cardápio
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -245,7 +252,7 @@ const CartPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <Link to="/cardapio" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+          <Link to={paths.menu} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Continuar Comprando
           </Link>
@@ -307,7 +314,7 @@ const CartPage: React.FC = () => {
                       );
                       return;
                     }
-                    navigate('/checkout');
+                    navigate(paths.checkout);
                   }}
                   disabled={!canCheckout}
                 >

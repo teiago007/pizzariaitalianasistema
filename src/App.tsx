@@ -71,6 +71,9 @@ const App = () => (
                   <Route path="/funcionario" element={<StaffLayout />}>
                     <Route index element={<StaffLoginPage />} />
                     <Route path="pedidos" element={<StaffOrdersPage />} />
+                    <Route path="carrinho" element={<CartPage />} />
+                    <Route path="checkout" element={<CheckoutPage />} />
+                    <Route path="pagamento" element={<PaymentPage />} />
                   </Route>
 
                 {/* 404 */}

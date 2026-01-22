@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, QrCode, Banknote, CreditCard, Check, AlertCircle, Loader2, Copy, MessageCircle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -19,6 +19,12 @@ import { QRCodeSVG } from 'qrcode.react';
 
 const PaymentPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isStaffFlow = location.pathname.startsWith('/funcionario');
+  const paths = {
+    cart: isStaffFlow ? '/funcionario/carrinho' : '/carrinho',
+    checkout: isStaffFlow ? '/funcionario/checkout' : '/checkout',
+  };
   const { items, total, clearCart } = useCart();
   const { settings } = useSettings();
   const { createOrder, confirmOrder } = useOrders();
@@ -38,13 +44,13 @@ const PaymentPage: React.FC = () => {
     if (saved) {
       setCustomerInfo(JSON.parse(saved));
     } else {
-      navigate('/checkout');
+      navigate(paths.checkout);
     }
-  }, [navigate]);
+  }, [navigate, paths.checkout]);
 
   // Redirect if cart is empty
   if (items.length === 0 && !showSuccessModal) {
-    navigate('/carrinho');
+    navigate(paths.cart);
     return null;
   }
 
@@ -250,7 +256,7 @@ const PaymentPage: React.FC = () => {
           className="mb-8"
         >
           <button
-            onClick={() => navigate('/checkout')}
+            onClick={() => navigate(paths.checkout)}
             className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
