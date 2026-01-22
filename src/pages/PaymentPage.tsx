@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, QrCode, Banknote, CreditCard, Check, AlertCircle, Loader2, Copy, MessageCircle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useSettings } from '@/hooks/useSettings';
+import { useStoreAvailability } from '@/hooks/useStoreAvailability';
 import { useOrders } from '@/hooks/useOrders';
 import { CustomerInfo, PaymentMethod } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ const PaymentPage: React.FC = () => {
   };
   const { items, total, clearCart } = useCart();
   const { settings } = useSettings();
+  const { availability } = useStoreAvailability(settings.isOpen);
   const { createOrder, confirmOrder } = useOrders();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
@@ -205,6 +207,15 @@ const PaymentPage: React.FC = () => {
   };
 
   const handleConfirmPayment = () => {
+    if (!availability.isOpenNow) {
+      const nextOpenAt = availability.nextOpenAt;
+      const nextOpen = nextOpenAt
+        ? `${new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(new Date(`${nextOpenAt.date}T00:00:00-03:00`))} ${nextOpenAt.time}`
+        : undefined;
+      toast.error(nextOpen ? `Loja fechada. Próxima abertura: ${nextOpen}.` : 'Loja fechada no momento.');
+      return;
+    }
+
     if (paymentMethod === 'pix') {
       handlePixPayment();
     } else if (paymentMethod === 'cash') {

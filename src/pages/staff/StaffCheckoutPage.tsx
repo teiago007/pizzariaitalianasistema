@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { Check, Printer } from "lucide-react";
+import { Check, Clock, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { useStaff } from "@/contexts/StaffContext";
 import { useStore } from "@/contexts/StoreContext";
+import { useStoreAvailability } from "@/hooks/useStoreAvailability";
 import type { CartItem, PaymentMethod } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,18 @@ const staffCheckoutSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
+const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
+  if (!nextOpenAt) return undefined;
+  const d = new Date(`${nextOpenAt.date}T00:00:00-03:00`);
+  const dayLabel = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d);
+  return `${dayLabel} ${nextOpenAt.time}`;
+};
+
 const StaffCheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useStaff();
   const { settings } = useStore();
+  const { availability } = useStoreAvailability(settings.isOpen);
   const { items, total, clearCart, itemCount } = useCart();
 
   const [note, setNote] = useState("");
@@ -94,6 +103,12 @@ const StaffCheckoutPage: React.FC = () => {
   };
 
   const createOrderInternal = async (opts: { print: boolean }) => {
+    if (!availability.isOpenNow) {
+      const nextOpen = formatNextOpenShort(availability.nextOpenAt);
+      toast.error(nextOpen ? `Loja fechada. Próxima abertura: ${nextOpen}.` : "Loja fechada no momento.");
+      return;
+    }
+
     const parsed = staffCheckoutSchema.safeParse({ note, paymentMethod });
     if (!parsed.success) {
       toast.error("Verifique os dados do pedido");
@@ -169,6 +184,20 @@ const StaffCheckoutPage: React.FC = () => {
           </p>
         </div>
 
+        {!availability.isOpenNow && (
+          <div className="p-4 rounded-lg bg-muted/40 border border-border text-sm text-muted-foreground flex items-start gap-3">
+            <Clock className="w-5 h-5 mt-0.5" />
+            <div>
+              <p className="font-medium text-foreground">Loja fechada no momento</p>
+              <p>
+                {formatNextOpenShort(availability.nextOpenAt)
+                  ? `Voltamos a aceitar pedidos em: ${formatNextOpenShort(availability.nextOpenAt)}.`
+                  : "Voltaremos a aceitar pedidos em breve."}
+              </p>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Observação geral (opcional)</CardTitle>
@@ -222,12 +251,17 @@ const StaffCheckoutPage: React.FC = () => {
             variant="outline"
             className="w-full"
             onClick={() => createOrderInternal({ print: true })}
-            disabled={submitting}
+            disabled={submitting || !availability.isOpenNow}
           >
             <Printer className="w-4 h-4 mr-2" />
             Criar pedido e imprimir nota
           </Button>
-          <Button size="lg" className="w-full" onClick={() => createOrderInternal({ print: false })} disabled={submitting}>
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={() => createOrderInternal({ print: false })}
+            disabled={submitting || !availability.isOpenNow}
+          >
             <Check className="w-4 h-4 mr-2" />
             Criar pedido
           </Button>
