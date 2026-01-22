@@ -13,6 +13,7 @@ import type { CartItem, PaymentMethod } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -36,6 +37,26 @@ const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
   return `${dayLabel} ${nextOpenAt.time}`;
 };
 
+const TZ = "America/Sao_Paulo";
+const getTodayISOInTZ = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+};
+const addDaysISO = (date: string, days: number) => {
+  const d = new Date(`${date}T00:00:00-03:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const StaffCheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useStaff();
@@ -46,6 +67,7 @@ const StaffCheckoutPage: React.FC = () => {
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [paperWidth, setPaperWidth] = useState<"80" | "53">("80");
+  const [tableNumber, setTableNumber] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   const hasItems = items.length > 0;
@@ -62,7 +84,12 @@ const StaffCheckoutPage: React.FC = () => {
     return null;
   }
 
-  const buildPrintHtml = (orderId: string, payloadItems: CartItem[], payloadTotal: number) => {
+  const buildPrintHtml = (
+    orderId: string,
+    payloadItems: CartItem[],
+    payloadTotal: number,
+    meta?: { seqOfDay?: number; tableNumber?: string }
+  ) => {
     const fmt = (n: number) => Number(n || 0).toFixed(2);
     const paperMm = paperWidth;
     const hasLogo = Boolean(settings.logo);
@@ -189,6 +216,8 @@ const StaffCheckoutPage: React.FC = () => {
             <div class="hr"></div>
             <div class="meta">
               <div><strong>Pedido:</strong> ${orderId.substring(0, 8).toUpperCase()}</div>
+              ${meta?.seqOfDay ? `<div><strong>Seq. do dia:</strong> ${meta.seqOfDay}</div>` : ""}
+              ${meta?.tableNumber ? `<div><strong>Mesa/Comanda:</strong> ${escapeHtml(meta.tableNumber)}</div>` : ""}
               <div><strong>Data:</strong> ${new Date().toLocaleString("pt-BR")}</div>
               <div><strong>Pagamento:</strong> ${escapeHtml(paymentMethod.toUpperCase())}</div>
             </div>
@@ -247,6 +276,7 @@ const StaffCheckoutPage: React.FC = () => {
           status: "CONFIRMED",
           order_origin: "in_store",
           created_by_user_id: user.id,
+           table_number: tableNumber.trim() ? tableNumber.trim() : null,
         })
         .select("id")
         .single();
@@ -255,9 +285,32 @@ const StaffCheckoutPage: React.FC = () => {
 
       const orderId = data.id as string;
 
+      // "Sequencial do dia" simples: contagem de pedidos in_store do dia (incluindo este).
+      let seqOfDay: number | undefined;
+      try {
+        const todayISO = getTodayISOInTZ();
+        const tomorrowISO = addDaysISO(todayISO, 1);
+        const start = `${todayISO}T00:00:00-03:00`;
+        const end = `${tomorrowISO}T00:00:00-03:00`;
+
+        const { count } = await supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("order_origin", "in_store")
+          .gte("created_at", start)
+          .lt("created_at", end);
+
+        if (typeof count === "number") seqOfDay = count;
+      } catch {
+        // ignore (still allow printing)
+      }
+
       if (opts.print) {
         try {
-          const html = buildPrintHtml(orderId, items as CartItem[], total);
+          const html = buildPrintHtml(orderId, items as CartItem[], total, {
+            seqOfDay,
+            tableNumber: tableNumber.trim() ? tableNumber.trim() : undefined,
+          });
           const w = window.open("", "_blank");
           if (!w) throw new Error("Popup bloqueado");
           w.document.write(html);
@@ -325,6 +378,20 @@ const StaffCheckoutPage: React.FC = () => {
               Dica: a maioria das impressoras térmicas de balcão é 80mm ou 58mm. Se sua for 58mm e o layout ficar cortando,
               me avise que adiciono a opção 58mm também.
             </p>
+
+            <div className="pt-3">
+              <Label htmlFor="staff-table" className="text-sm text-muted-foreground">Mesa/Comanda (opcional)</Label>
+              <Input
+                id="staff-table"
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                placeholder="Ex: Mesa 4 / Comanda 12"
+                className="mt-1.5"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Isso aparece no cupom, junto com o <strong>Seq. do dia</strong> (contagem simples).
+              </p>
+            </div>
           </CardContent>
         </Card>
 
