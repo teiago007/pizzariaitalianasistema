@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Check } from 'lucide-react';
 import { PizzaFlavor, PizzaSize, PizzaBorder } from '@/types';
@@ -42,14 +42,27 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
     setIsOpen(false);
   };
 
-  const calculatePrice = () => {
-    const flavorPrice = Math.max(...selectedFlavors.map(f => f.prices[selectedSize]));
-    // Use size-specific border price if available
-    const borderPrice = wantsBorder && selectedBorder 
-      ? (selectedBorder.prices?.[selectedSize] || selectedBorder.price) 
+  // Keep selectedBorder reference in sync with store borders list (safety for stale objects)
+  useEffect(() => {
+    if (!wantsBorder || !selectedBorder) return;
+    const refreshed = borders.find((b) => b.id === selectedBorder.id);
+    if (refreshed) setSelectedBorder(refreshed);
+    // only depends on size because the user reported border price not updating when size changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSize]);
+
+  const totalPrice = useMemo(() => {
+    const safeFlavorPrices = (selectedFlavors || [])
+      .map((f) => Number((f as any)?.prices?.[selectedSize]))
+      .filter((n) => Number.isFinite(n));
+    const flavorPrice = safeFlavorPrices.length > 0 ? Math.max(...safeFlavorPrices) : 0;
+
+    const borderPrice = wantsBorder && selectedBorder
+      ? Number(selectedBorder.prices?.[selectedSize] ?? selectedBorder.price ?? 0)
       : 0;
-    return flavorPrice + borderPrice;
-  };
+
+    return (Number.isFinite(flavorPrice) ? flavorPrice : 0) + (Number.isFinite(borderPrice) ? borderPrice : 0);
+  }, [selectedFlavors, selectedSize, wantsBorder, selectedBorder]);
 
   const toggleSecondFlavor = (flavorToToggle: PizzaFlavor) => {
     if (flavorCount === 1) return;
@@ -230,8 +243,10 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
                   onValueChange={(v) => setSelectedBorder(borders.find(b => b.id === v))}
                   className="space-y-2"
                 >
-                  {borders.filter(b => b.price > 0 || (b.prices && b.prices[selectedSize] > 0)).map((border) => {
-                    const borderPrice = border.prices?.[selectedSize] || border.price;
+                  {borders
+                    .filter((b) => (b.prices ? (b.prices[selectedSize] ?? 0) : b.price) > 0)
+                    .map((border) => {
+                    const borderPrice = (border.prices?.[selectedSize] ?? border.price ?? 0);
                     return (
                       <div key={border.id} className="flex items-center space-x-3">
                         <RadioGroupItem value={border.id} id={border.id} />
@@ -251,7 +266,7 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
               <div className="flex items-center justify-between mb-4">
                 <span className="text-muted-foreground">Total:</span>
                 <span className="text-2xl font-bold text-primary">
-                  R$ {calculatePrice().toFixed(2)}
+                  R$ {totalPrice.toFixed(2)}
                 </span>
               </div>
               <Button 

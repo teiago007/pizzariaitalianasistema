@@ -175,17 +175,28 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         prices,
       };
     }) || [];
-  const borders: PizzaBorder[] = bordersData?.map(b => ({
-    id: b.id,
-    name: b.name,
-    price: Number(b.price),
-    prices: {
-      P: Number(b.price_p || b.price * 0.6),
-      M: Number(b.price_m || b.price * 0.8),
-      G: Number(b.price_g || b.price),
-      GG: Number(b.price_gg || b.price * 1.2),
-    },
-  })) || [];
+  const borders: PizzaBorder[] =
+    bordersData?.map((b) => {
+      const base = Number(b.price) || 0;
+      const toNum = (v: any, fallback: number) => {
+        // IMPORTANT: use nullish checks so 0 remains 0 ("||" would override it).
+        if (v === null || v === undefined) return fallback;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fallback;
+      };
+
+      return {
+        id: b.id,
+        name: b.name,
+        price: base,
+        prices: {
+          P: toNum(b.price_p, base * 0.6),
+          M: toNum(b.price_m, base * 0.8),
+          G: toNum(b.price_g, base),
+          GG: toNum(b.price_gg, base * 1.2),
+        },
+      };
+    }) || [];
 
   const products: Product[] = productsData?.map(p => ({
     id: p.id,
