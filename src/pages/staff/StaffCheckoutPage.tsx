@@ -37,26 +37,6 @@ const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
   return `${dayLabel} ${nextOpenAt.time}`;
 };
 
-const TZ = "America/Sao_Paulo";
-const getTodayISOInTZ = () => {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return `${map.year}-${map.month}-${map.day}`;
-};
-const addDaysISO = (date: string, days: number) => {
-  const d = new Date(`${date}T00:00:00-03:00`);
-  d.setDate(d.getDate() + days);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
-
 const StaffCheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useStaff();
@@ -278,32 +258,14 @@ const StaffCheckoutPage: React.FC = () => {
           created_by_user_id: user.id,
            table_number: tableNumber.trim() ? tableNumber.trim() : null,
         })
-        .select("id")
+        .select("id, seq_of_day")
         .single();
 
       if (error) throw error;
 
       const orderId = data.id as string;
 
-      // "Sequencial do dia" simples: contagem de pedidos in_store do dia (incluindo este).
-      let seqOfDay: number | undefined;
-      try {
-        const todayISO = getTodayISOInTZ();
-        const tomorrowISO = addDaysISO(todayISO, 1);
-        const start = `${todayISO}T00:00:00-03:00`;
-        const end = `${tomorrowISO}T00:00:00-03:00`;
-
-        const { count } = await supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("order_origin", "in_store")
-          .gte("created_at", start)
-          .lt("created_at", end);
-
-        if (typeof count === "number") seqOfDay = count;
-      } catch {
-        // ignore (still allow printing)
-      }
+      const seqOfDay = typeof (data as any).seq_of_day === "number" ? (data as any).seq_of_day : undefined;
 
       if (opts.print) {
         try {
