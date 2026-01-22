@@ -18,7 +18,7 @@ const StaffLoginPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/cardapio", { replace: true });
+    if (isAuthenticated) navigate("/funcionario/pedidos", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
