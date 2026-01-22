@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, MapPin, Phone, User, Clock } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -22,6 +22,12 @@ const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isStaffFlow = location.pathname.startsWith('/funcionario');
+  const paths = {
+    cart: isStaffFlow ? '/funcionario/carrinho' : '/carrinho',
+    payment: isStaffFlow ? '/funcionario/pagamento' : '/pagamento',
+  };
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
   const { items, total, itemCount, updatePizzaNote } = useCart();
@@ -38,7 +44,7 @@ const CheckoutPage: React.FC = () => {
 
   // Redirect if cart is empty
   if (items.length === 0) {
-    navigate('/carrinho');
+    navigate(paths.cart);
     return null;
   }
 
@@ -85,7 +91,7 @@ const CheckoutPage: React.FC = () => {
 
     // Store customer info and navigate to payment
     sessionStorage.setItem('customerInfo', JSON.stringify(customerInfo));
-    navigate('/pagamento');
+    navigate(paths.payment);
   };
 
   const nextOpenShort = formatNextOpenShort(availability.nextOpenAt);
@@ -99,7 +105,7 @@ const CheckoutPage: React.FC = () => {
           className="mb-8"
         >
           <button
-            onClick={() => navigate('/carrinho')}
+            onClick={() => navigate(paths.cart)}
             className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
