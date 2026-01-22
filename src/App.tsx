@@ -30,6 +30,8 @@ import AdminStaff from "@/pages/admin/AdminStaff";
 import StaffLoginPage from "@/pages/staff/StaffLoginPage";
 import StaffLayout from "@/pages/staff/StaffLayout";
 import StaffOrdersPage from "@/pages/staff/StaffOrdersPage";
+import StaffCartPage from "@/pages/staff/StaffCartPage";
+import StaffCheckoutPage from "@/pages/staff/StaffCheckoutPage";
 
 import NotFound from "./pages/NotFound";
 
@@ -71,9 +73,8 @@ const App = () => (
                   <Route path="/funcionario" element={<StaffLayout />}>
                     <Route index element={<StaffLoginPage />} />
                     <Route path="pedidos" element={<StaffOrdersPage />} />
-                    <Route path="carrinho" element={<CartPage />} />
-                    <Route path="checkout" element={<CheckoutPage />} />
-                    <Route path="pagamento" element={<PaymentPage />} />
+                    <Route path="carrinho" element={<StaffCartPage />} />
+                    <Route path="checkout" element={<StaffCheckoutPage />} />
                   </Route>
 
                 {/* 404 */}
