@@ -199,13 +199,14 @@ const AdminOrders: React.FC = () => {
           ${order.customer.complement ? `<div class="info"><strong>Complemento:</strong> ${order.customer.complement}</div>` : ''}
           <hr/>
           <div><strong>Itens:</strong></div>
-          ${order.items.map(item => {
-            if (item.type === 'pizza') {
-              return `<div class="item">${item.quantity}x Pizza ${item.flavors.map(f => f.name).join(' + ')} (${item.size}) - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
-            } else {
-              return `<div class="item">${item.quantity}x ${formatProductLabel(item.product.name)} - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
-            }
-          }).join('')}
+           ${order.items.map(item => {
+             if (item.type === 'pizza') {
+               const note = (item as any).note ? ` <br/><small>Obs: ${(item as any).note}</small>` : '';
+               return `<div class="item">${item.quantity}x Pizza ${item.flavors.map(f => f.name).join(' + ')} (${item.size}) - R$ ${(item.unitPrice * item.quantity).toFixed(2)}${note}</div>`;
+             } else {
+               return `<div class="item">${item.quantity}x ${formatProductLabel(item.product.name)} - R$ ${(item.unitPrice * item.quantity).toFixed(2)}</div>`;
+             }
+           }).join('')}
           <div class="total">TOTAL: R$ ${order.total.toFixed(2)}</div>
           <div class="info"><strong>Pagamento:</strong> ${paymentLabels[order.payment.method]}</div>
           ${order.payment.needsChange ? `<div class="info"><strong>Troco para:</strong> R$ ${order.payment.changeFor?.toFixed(2)}</div>` : ''}
@@ -254,7 +255,7 @@ const AdminOrders: React.FC = () => {
           {order.items.map((item, index) => (
             <div key={index} className="flex justify-between items-start p-3 bg-muted/30 rounded-lg">
               <div className="flex-1">
-                {item.type === 'pizza' ? (
+                 {item.type === 'pizza' ? (
                   <>
                     <p className="font-medium">
                       Pizza {(item as CartItemPizza).size} - {(item as CartItemPizza).flavors.length} sabor(es)
@@ -272,6 +273,11 @@ const AdminOrders: React.FC = () => {
                         Borda: {(item as CartItemPizza).border?.name}
                       </p>
                     )}
+                     {(item as CartItemPizza).note && (
+                       <p className="text-sm text-muted-foreground">
+                         Obs: <span className="text-foreground">{(item as CartItemPizza).note}</span>
+                       </p>
+                     )}
                   </>
                 ) : (
                   <>

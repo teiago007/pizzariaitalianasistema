@@ -18,7 +18,7 @@ const StaffLoginPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/funcionario/pedidos", { replace: true });
+    if (isAuthenticated) navigate("/cardapio", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +47,7 @@ const StaffLoginPage: React.FC = () => {
               <UserCog className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="font-display text-2xl">Área do Funcionário</CardTitle>
-            <CardDescription>Entre para criar pedidos presenciais e controlar o caixa</CardDescription>
+            <CardDescription>Entre para criar pedidos usando o mesmo fluxo do cliente.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

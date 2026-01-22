@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, MapPin, Phone, User, Clock } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext';
 import { useStore } from '@/contexts/StoreContext';
 import { useStoreAvailability } from '@/hooks/useStoreAvailability';
-import { CustomerInfo } from '@/types';
+import { CartItemPizza, CustomerInfo } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,13 +24,17 @@ const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
-  const { items, total, itemCount } = useCart();
+  const { items, total, itemCount, updatePizzaNote } = useCart();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     phone: '',
     address: '',
     complement: '',
   });
+
+  const pizzasInCart = items
+    .map((it, idx) => ({ it, idx }))
+    .filter((x) => x.it.type === 'pizza') as Array<{ it: CartItemPizza; idx: number }>;
 
   // Redirect if cart is empty
   if (items.length === 0) {
@@ -196,6 +200,40 @@ const CheckoutPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Item notes (pizzas) */}
+          {pizzasInCart.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg">Observações por pizza</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Se precisar, deixe uma observação individual para cada pizza (ex: "meia sem cebola").
+                </p>
+
+                <div className="space-y-4">
+                  {pizzasInCart.map(({ it, idx }, i) => (
+                    <div key={it.id} className="rounded-lg border bg-card p-4">
+                      <p className="font-medium text-foreground">
+                        Pizza {i + 1}: {(it.flavors || []).map((f) => f.name).join(' + ') || 'Pizza'} ({it.size})
+                      </p>
+                      <Label htmlFor={`pizza-note-${it.id}`} className="text-sm text-muted-foreground">
+                        Observação (opcional)
+                      </Label>
+                      <Input
+                        id={`pizza-note-${it.id}`}
+                        value={it.note || ''}
+                        onChange={(e) => updatePizzaNote(idx, e.target.value)}
+                        placeholder='Ex: sem cebola / bem passada'
+                        className="mt-1.5"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Order Summary */}
           <Card className="mb-6 bg-muted/30">

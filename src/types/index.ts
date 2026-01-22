@@ -68,6 +68,8 @@ export interface CartItemPizza {
   border?: PizzaBorder;
   quantity: number;
   unitPrice: number;
+  /** Observação individual do item (ex: "sem cebola") */
+  note?: string;
 }
 
 export interface CartItemProduct {
