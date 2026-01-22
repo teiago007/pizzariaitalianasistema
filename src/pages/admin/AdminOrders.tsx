@@ -205,25 +205,25 @@ const AdminOrders: React.FC = () => {
   };
 
   const handlePrint = async (order: Order) => {
-    // Sequencial simples do dia: conta quantos pedidos existem antes deste (pela data/hora) no mesmo dia.
-    let seqOfDay: number | undefined;
-    try {
-      const orderDateISO = dateISOInTZ(new Date(order.createdAt));
-      const nextDateISO = addDaysISO(orderDateISO, 1);
-      const dayStart = `${orderDateISO}T00:00:00-03:00`;
-      const orderTimeISO = new Date(order.createdAt).toISOString();
+    // Sequencial robusto do dia: vem pronto do backend no campo seqOfDay.
+    // (fallback: se for pedido antigo sem seq, tenta estimar por contagem)
+    let seqOfDay: number | undefined = order.seqOfDay;
+    if (typeof seqOfDay !== 'number') {
+      try {
+        const orderDateISO = dateISOInTZ(new Date(order.createdAt));
+        const dayStart = `${orderDateISO}T00:00:00-03:00`;
+        const orderTimeISO = new Date(order.createdAt).toISOString();
 
-      const { count, error } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', dayStart)
-        .lt('created_at', orderTimeISO);
+        const { count, error } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', dayStart)
+          .lt('created_at', orderTimeISO);
 
-      if (!error && typeof count === 'number') seqOfDay = count + 1;
-      // fallback: if count fails (permissions), we just omit seq
-      void nextDateISO;
-    } catch {
-      // ignore
+        if (!error && typeof count === 'number') seqOfDay = count + 1;
+      } catch {
+        // ignore
+      }
     }
 
     const fmt = (n: number) => Number(n || 0).toFixed(2);

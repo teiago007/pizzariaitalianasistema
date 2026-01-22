@@ -12,6 +12,7 @@ interface DbOrder {
   order_origin?: string | null;
   table_number?: string | null;
   created_by_user_id?: string | null;
+  seq_of_day?: number | null;
   items: any;
   payment_method: string;
   needs_change: boolean | null;
@@ -39,6 +40,7 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
   },
   total: Number(dbOrder.total),
   status: dbOrder.status as OrderStatus,
+  seqOfDay: typeof dbOrder.seq_of_day === 'number' ? dbOrder.seq_of_day : undefined,
   orderOrigin: dbOrder.order_origin || undefined,
   tableNumber: dbOrder.table_number || undefined,
   createdByUserId: dbOrder.created_by_user_id || undefined,

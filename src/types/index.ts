@@ -102,6 +102,8 @@ export interface Order {
   payment: PaymentInfo;
   status: OrderStatus;
   total: number;
+  /** Número sequencial do pedido no dia (gerado no backend) */
+  seqOfDay?: number;
   /** 'in_store' para pedidos presenciais (garçom), ou null para pedidos comuns */
   orderOrigin?: string;
   /** Mesa/comanda quando pedido for presencial */
