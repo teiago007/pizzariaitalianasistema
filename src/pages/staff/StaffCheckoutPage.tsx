@@ -15,6 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const staffCheckoutSchema = z.object({
@@ -38,6 +45,7 @@ const StaffCheckoutPage: React.FC = () => {
 
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paperWidth, setPaperWidth] = useState<"80" | "53">("80");
   const [submitting, setSubmitting] = useState(false);
 
   const hasItems = items.length > 0;
@@ -56,21 +64,46 @@ const StaffCheckoutPage: React.FC = () => {
 
   const buildPrintHtml = (orderId: string, payloadItems: CartItem[], payloadTotal: number) => {
     const fmt = (n: number) => Number(n || 0).toFixed(2);
+    const paperMm = paperWidth;
+    const hasLogo = Boolean(settings.logo);
+    const escapeHtml = (s: string) =>
+      s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
     const itemsHtml = payloadItems
       .map((item) => {
         if (item.type === "pizza") {
           const pizza = item as any;
           const flavors = (pizza.flavors || []).map((f: any) => f.name).join(" + ") || "Pizza";
           const border = pizza.border?.name ? ` • Borda ${pizza.border.name}` : "";
-          const obs = pizza.note ? `<br/><small>Obs: ${String(pizza.note)}</small>` : "";
-          return `<div class="item">${pizza.quantity}x Pizza ${flavors} (${pizza.size})${border} - R$ ${fmt(
-            pizza.unitPrice * pizza.quantity
-          )}${obs}</div>`;
+          const obs = pizza.note ? `<div class="muted">Obs: ${escapeHtml(String(pizza.note))}</div>` : "";
+          return `
+            <div class="row">
+              <div class="qty">${pizza.quantity}x</div>
+              <div class="name">
+                <div class="title">Pizza ${escapeHtml(flavors)} (${escapeHtml(String(pizza.size))})</div>
+                ${border ? `<div class="muted">${escapeHtml(border.replace(/^\s*•\s*/, ""))}</div>` : ""}
+                ${obs}
+              </div>
+              <div class="price">R$ ${fmt(pizza.unitPrice * pizza.quantity)}</div>
+            </div>
+          `;
         }
         const p = (item as any).product;
-        return `<div class="item">${item.quantity}x ${p?.name || "Produto"} - R$ ${fmt(
-          item.unitPrice * item.quantity
-        )}</div>`;
+        const productName = escapeHtml(String(p?.name || "Produto"));
+        return `
+          <div class="row">
+            <div class="qty">${item.quantity}x</div>
+            <div class="name">
+              <div class="title">${productName}</div>
+            </div>
+            <div class="price">R$ ${fmt(item.unitPrice * item.quantity)}</div>
+          </div>
+        `;
       })
       .join("");
 
@@ -79,24 +112,99 @@ const StaffCheckoutPage: React.FC = () => {
         <head>
           <title>Pedido ${orderId.substring(0, 8).toUpperCase()}</title>
           <style>
-            body { font-family: 'Courier New', monospace; padding: 16px; max-width: 320px; }
-            h1 { font-size: 18px; text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-            .info { margin: 8px 0; }
-            .item { margin: 6px 0; }
-            .total { font-weight: bold; border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
-            small { color: #333; }
+            :root {
+              --paper: ${paperMm}mm;
+              --m: 3mm;
+              --font: 11px;
+              --font-sm: 10px;
+              --font-lg: 14px;
+            }
+
+            @page {
+              size: var(--paper) auto;
+              margin: var(--m);
+            }
+
+            html, body {
+              width: var(--paper);
+              margin: 0;
+              padding: 0;
+              color: #000;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+              font-size: var(--font);
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            .wrap { padding: var(--m); }
+
+            .center { text-align: center; }
+            .muted { color: #222; font-size: var(--font-sm); }
+            .hr { border-top: 1px dashed #000; margin: 8px 0; }
+
+            .logo {
+              display: ${hasLogo ? "block" : "none"};
+              width: 100%;
+              max-height: 20mm;
+              object-fit: contain;
+              margin: 0 auto 6px auto;
+            }
+
+            .store { font-size: var(--font-lg); font-weight: 700; letter-spacing: 0.5px; }
+            .meta { margin-top: 6px; }
+
+            .row {
+              display: grid;
+              grid-template-columns: 10mm 1fr auto;
+              gap: 6px;
+              align-items: start;
+              margin: 6px 0;
+            }
+            .qty { font-weight: 700; }
+            .title { font-weight: 700; }
+            .price { font-weight: 700; white-space: nowrap; text-align: right; }
+
+            .totals {
+              margin-top: 10px;
+              padding-top: 8px;
+              border-top: 2px dashed #000;
+            }
+            .total-line {
+              display: flex;
+              justify-content: space-between;
+              font-size: var(--font-lg);
+              font-weight: 800;
+            }
+
+            /* Hide URL/footer where possible */
+            a[href]:after { content: ""; }
           </style>
         </head>
         <body>
-          <h1>🍕 ${settings.name}</h1>
-          <div class="info"><strong>Pedido:</strong> ${orderId.substring(0, 8).toUpperCase()}</div>
-          <div class="info"><strong>Data:</strong> ${new Date().toLocaleString("pt-BR")}</div>
-          <hr/>
-          <div><strong>Itens:</strong></div>
-          ${itemsHtml}
-          <div class="total">TOTAL: R$ ${fmt(payloadTotal)}</div>
-          <div class="info"><strong>Pagamento:</strong> ${paymentMethod.toUpperCase()}</div>
-          ${note.trim() ? `<div class="info"><strong>Obs geral:</strong> ${note.trim()}</div>` : ""}
+          <div class="wrap">
+            <img class="logo" src="${settings.logo || ""}" alt="Logo" />
+            <div class="center store">${escapeHtml(settings.name)}</div>
+            <div class="center muted">${escapeHtml(settings.address || "")}</div>
+
+            <div class="hr"></div>
+            <div class="meta">
+              <div><strong>Pedido:</strong> ${orderId.substring(0, 8).toUpperCase()}</div>
+              <div><strong>Data:</strong> ${new Date().toLocaleString("pt-BR")}</div>
+              <div><strong>Pagamento:</strong> ${escapeHtml(paymentMethod.toUpperCase())}</div>
+            </div>
+
+            <div class="hr"></div>
+            <div><strong>Itens</strong></div>
+            ${itemsHtml}
+
+            <div class="totals">
+              <div class="total-line"><span>TOTAL</span><span>R$ ${fmt(payloadTotal)}</span></div>
+              ${note.trim() ? `<div class="hr"></div><div><strong>Obs geral:</strong> ${escapeHtml(note.trim())}</div>` : ""}
+            </div>
+
+            <div class="hr"></div>
+            <div class="center muted">Obrigado!</div>
+          </div>
         </body>
       </html>
     `;
@@ -197,6 +305,28 @@ const StaffCheckoutPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Impressão</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Largura do papel</Label>
+            <Select value={paperWidth} onValueChange={(v) => setPaperWidth(v as "80" | "53")}> 
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="80">80mm (térmica)</SelectItem>
+                <SelectItem value="53">53mm</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Dica: a maioria das impressoras térmicas de balcão é 80mm ou 58mm. Se sua for 58mm e o layout ficar cortando,
+              me avise que adiciono a opção 58mm também.
+            </p>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
