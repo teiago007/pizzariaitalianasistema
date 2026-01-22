@@ -335,6 +335,12 @@ const AdminOrders: React.FC = () => {
   const OrderDetails: React.FC<{ order: Order }> = ({ order }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
+        {typeof order.seqOfDay === 'number' && (
+          <div className="col-span-2">
+            <p className="text-sm text-muted-foreground">Seq. do dia</p>
+            <p className="font-medium font-mono">#{order.seqOfDay}</p>
+          </div>
+        )}
         {order.tableNumber && (
           <div className="col-span-2">
             <p className="text-sm text-muted-foreground">Mesa/Comanda</p>
