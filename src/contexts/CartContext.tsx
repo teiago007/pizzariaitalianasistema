@@ -7,6 +7,7 @@ interface CartContextType {
   addProduct: (product: Product, quantity?: number) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
+  updatePizzaNote: (index: number, note: string) => void;
   clearCart: () => void;
   total: number;
   itemCount: number;
@@ -26,6 +27,7 @@ export const useCart = () => {
       addProduct: () => undefined,
       removeItem: () => undefined,
       updateQuantity: () => undefined,
+      updatePizzaNote: () => undefined,
       clearCart: () => undefined,
       total: 0,
       itemCount: 0,
@@ -110,6 +112,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     });
   }, [removeItem]);
 
+  const updatePizzaNote = useCallback((index: number, note: string) => {
+    setItems((prev) => {
+      const updated = [...prev];
+      const current = updated[index];
+      if (!current || current.type !== 'pizza') return prev;
+      updated[index] = {
+        ...(current as CartItemPizza),
+        note: note.trim() ? note : undefined,
+      };
+      return updated;
+    });
+  }, []);
+
   const clearCart = useCallback(() => {
     setItems([]);
   }, []);
@@ -125,6 +140,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         addProduct,
         removeItem,
         updateQuantity,
+        updatePizzaNote,
         clearCart,
         total,
         itemCount,

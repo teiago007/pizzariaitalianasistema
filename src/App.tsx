@@ -30,7 +30,6 @@ import AdminStaff from "@/pages/admin/AdminStaff";
 import StaffLoginPage from "@/pages/staff/StaffLoginPage";
 import StaffLayout from "@/pages/staff/StaffLayout";
 import StaffOrdersPage from "@/pages/staff/StaffOrdersPage";
-import StaffCashierPage from "@/pages/staff/StaffCashierPage";
 
 import NotFound from "./pages/NotFound";
 
@@ -72,7 +71,6 @@ const App = () => (
                   <Route path="/funcionario" element={<StaffLayout />}>
                     <Route index element={<StaffLoginPage />} />
                     <Route path="pedidos" element={<StaffOrdersPage />} />
-                    <Route path="caixa" element={<StaffCashierPage />} />
                   </Route>
 
                 {/* 404 */}

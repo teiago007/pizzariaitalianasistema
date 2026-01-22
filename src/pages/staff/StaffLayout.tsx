@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ClipboardList, LogOut, Menu, Wallet, X } from "lucide-react";
+import { ClipboardList, LogOut, Menu, X } from "lucide-react";
 import { useStaff } from "@/contexts/StaffContext";
 import { useStore } from "@/contexts/StoreContext";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,6 @@ const StaffLayout: React.FC = () => {
 
   const navItems = [
     { path: "/funcionario/pedidos", label: "Pedidos", icon: ClipboardList },
-    { path: "/funcionario/caixa", label: "Caixa", icon: Wallet },
   ];
 
   const NavLinks = ({ onItemClick }: { onItemClick?: () => void }) => (
