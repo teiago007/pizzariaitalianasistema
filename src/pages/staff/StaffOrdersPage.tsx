@@ -26,6 +26,16 @@ type DbCategory = {
   available: boolean;
 };
 
+const parseDrinkSize = (name: string) => {
+  const m = (name || '').trim().match(/(\d+[\.,]?\d*)\s*(ml|l)\s*$/i);
+  if (!m) return null;
+  const value = m[1].replace(',', '.');
+  const unit = m[2].toLowerCase();
+  return `${value}${unit}`;
+};
+
+const stripDrinkSize = (name: string) => (name || '').replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
+
 const StaffOrdersPage: React.FC = () => {
   const { user } = useStaff();
   const { orders, loading: loadingOrders } = useOrders();
@@ -119,10 +129,20 @@ const StaffOrdersPage: React.FC = () => {
           `;
         }
         const p = (item as any).product;
+        const isSoda = String(p?.category || '').toLowerCase() === 'refrigerantes';
+        const explicitSize = p?.drinkSizeName as string | null | undefined;
+        const legacySize = parseDrinkSize(String(p?.name || ''));
+        const size = explicitSize || legacySize;
+        const baseName = isSoda
+          ? (explicitSize ? String(p?.name || 'Produto') : legacySize ? stripDrinkSize(String(p?.name || '')) : String(p?.name || 'Produto'))
+          : String(p?.name || 'Produto');
         return `
           <div class="row">
             <div class="qty">${item.quantity}x</div>
-            <div class="name"><div class="title">${escapeHtml(String(p?.name || "Produto"))}</div></div>
+            <div class="name">
+              <div class="title">${escapeHtml(baseName)}</div>
+              ${isSoda && size ? `<div class="muted">${escapeHtml(String(size))}</div>` : ''}
+            </div>
             <div class="price">R$ ${fmt(item.unitPrice * item.quantity)}</div>
           </div>
         `;
@@ -246,9 +266,22 @@ const StaffOrdersPage: React.FC = () => {
                       </p>
                     )}
                   </>
-                ) : (
-                  <p className="font-medium">{item.product.name}</p>
-                )}
+                ) : (() => {
+                  const p: any = (item as any).product;
+                  const isSoda = String(p?.category || '').toLowerCase() === 'refrigerantes';
+                  const explicitSize = p?.drinkSizeName as string | null | undefined;
+                  const legacySize = parseDrinkSize(String(p?.name || ''));
+                  const size = explicitSize || legacySize;
+                  const baseName = isSoda
+                    ? (explicitSize ? String(p?.name || 'Produto') : legacySize ? stripDrinkSize(String(p?.name || '')) : String(p?.name || 'Produto'))
+                    : String(p?.name || 'Produto');
+                  return (
+                    <div>
+                      <p className="font-medium">{baseName}</p>
+                      {isSoda && size ? <p className="text-sm text-muted-foreground">{String(size)}</p> : null}
+                    </div>
+                  );
+                })()}
                 <p className="text-sm text-muted-foreground">Qtd: {item.quantity}</p>
               </div>
               <p className="font-medium text-primary">R$ {(item.unitPrice * item.quantity).toFixed(2)}</p>

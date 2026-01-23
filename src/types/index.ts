@@ -54,6 +54,10 @@ export interface Product {
   category: string;
   image?: string;
   available: boolean;
+  /** Relacionamento opcional para refrigerantes (novo). Mantém compatibilidade com nomes antigos. */
+  drinkSizeId?: string | null;
+  /** Nome do tamanho (ex: Lata, 600ml, 2L) para exibição em carrinho/pedido. */
+  drinkSizeName?: string | null;
 }
 
 export type PaymentMethod = 'pix' | 'cash' | 'card';

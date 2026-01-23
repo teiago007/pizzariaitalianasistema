@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tables } from '@/integrations/supabase/types';
 import PizzaCategoriesManager from '@/components/admin/PizzaCategoriesManager';
+import DrinkSizesManager from '@/components/admin/DrinkSizesManager';
 import { useSearchParams } from 'react-router-dom';
 
 type PizzaFlavor = Tables<'pizza_flavors'>;
@@ -67,6 +68,8 @@ const AdminProducts: React.FC = () => {
     category: 'Bebidas',
     available: true,
     image_url: '',
+    // Radix Select não aceita value="" em SelectItem, então usamos sentinel.
+    drink_size_id: '__none__',
   });
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
 
@@ -341,6 +344,7 @@ const AdminProducts: React.FC = () => {
       category: 'Bebidas',
       available: true,
       image_url: '',
+      drink_size_id: '__none__',
     });
     setProductImageFile(null);
   };
@@ -423,6 +427,7 @@ const AdminProducts: React.FC = () => {
         category: product.category,
         available: product.available,
         image_url: product.image_url || '',
+        drink_size_id: (product as any).drink_size_id || '__none__',
       });
     } else {
       resetProductForm();
@@ -473,6 +478,7 @@ const AdminProducts: React.FC = () => {
       toast.error('Nome é obrigatório');
       return;
     }
+    const drinkSizeId = productForm.drink_size_id === '__none__' ? null : productForm.drink_size_id;
     saveProductMutation.mutate({
       name: productForm.name,
       description: productForm.description,
@@ -480,8 +486,22 @@ const AdminProducts: React.FC = () => {
       category: productForm.category,
       available: productForm.available,
       image_url: productForm.image_url,
+      drink_size_id: drinkSizeId,
     });
   };
+
+  const { data: drinkSizes = [] } = useQuery({
+    queryKey: ['drink-sizes-admin'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('drink_sizes')
+        .select('id,name,display_order,available')
+        .order('display_order')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Filter data based on search
   const filteredFlavors = flavors.filter(f =>
@@ -524,10 +544,11 @@ const AdminProducts: React.FC = () => {
       </div>
 
       <Tabs defaultValue="pizzas" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="pizzas">🍕 Pizzas</TabsTrigger>
           <TabsTrigger value="categorias">📂 Categorias</TabsTrigger>
           <TabsTrigger value="bordas">🧀 Bordas</TabsTrigger>
+          <TabsTrigger value="tamanhos">🥤 Tamanhos</TabsTrigger>
           <TabsTrigger value="outros">🥤 Outros</TabsTrigger>
         </TabsList>
 
@@ -694,6 +715,11 @@ const AdminProducts: React.FC = () => {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Tamanhos de refrigerante */}
+        <TabsContent value="tamanhos" className="space-y-4">
+          <DrinkSizesManager />
         </TabsContent>
 
         {/* Outros Produtos Tab */}
@@ -1040,6 +1066,31 @@ const AdminProducts: React.FC = () => {
                 placeholder="Ex: Bebidas"
               />
             </div>
+
+            {productForm.category.trim().toLowerCase() === 'refrigerantes' && (
+              <div>
+                <Label>Tamanho do refrigerante</Label>
+                <Select
+                  value={productForm.drink_size_id}
+                  onValueChange={(value) => setProductForm((f) => ({ ...f, drink_size_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um tamanho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">(Sem tamanho)</SelectItem>
+                    {drinkSizes.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}{s.available ? '' : ' (inativo)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Dica: para não quebrar o legado, você pode deixar “Sem tamanho” e o sistema ainda tenta inferir pelo nome.
+                </p>
+              </div>
+            )}
 
             <div>
               <Label>Preço</Label>

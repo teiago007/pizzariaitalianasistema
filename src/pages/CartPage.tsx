@@ -159,15 +159,21 @@ const CartPage: React.FC = () => {
         <div className="flex-1">
           {(() => {
             const isSoda = item.product.category?.toLowerCase() === 'refrigerantes';
-            const size = parseDrinkSize(item.product.name);
-            const baseName = size ? stripDrinkSize(item.product.name) : item.product.name;
+            const explicitSize = (item.product as any).drinkSizeName as string | null | undefined;
+            const legacySize = parseDrinkSize(item.product.name);
+            const size = explicitSize || legacySize;
+            const baseName = isSoda
+              ? (explicitSize ? item.product.name : legacySize ? stripDrinkSize(item.product.name) : item.product.name)
+              : legacySize
+                ? stripDrinkSize(item.product.name)
+                : item.product.name;
 
             return (
               <>
                 <h3 className="font-semibold text-foreground">
                   {isSoda ? baseName : `${baseName}${size ? ` (${size.toUpperCase()})` : ''}`}
                 </h3>
-                {isSoda && size && <p className="text-sm text-muted-foreground">{size.toUpperCase()}</p>}
+                {isSoda && size && <p className="text-sm text-muted-foreground">{String(size)}</p>}
                 {item.product.description ? (
                   <p className="text-sm text-muted-foreground">{item.product.description}</p>
                 ) : null}

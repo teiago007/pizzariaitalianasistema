@@ -22,6 +22,13 @@ type DbCategory = {
   available: boolean;
 };
 
+type DbDrinkSize = {
+  id: string;
+  name: string;
+  display_order: number;
+  available: boolean;
+};
+
 const parseDrinkSize = (name: string) => {
   // Heurística: tenta pegar um sufixo de tamanho no final do nome
   // Exemplos: "Coca-Cola 2L", "Guaraná 350ml", "Fanta 600ml"
@@ -53,6 +60,20 @@ const MenuPage: React.FC = () => {
         .order('display_order');
       if (error) throw error;
       return (data || []) as DbCategory[];
+    },
+  });
+
+  const { data: drinkSizes = [] } = useQuery({
+    queryKey: ['drink-sizes-public'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('drink_sizes')
+        .select('id,name,display_order,available')
+        .eq('available', true)
+        .order('display_order')
+        .order('name');
+      if (error) throw error;
+      return (data || []) as DbDrinkSize[];
     },
   });
 
@@ -110,16 +131,31 @@ const MenuPage: React.FC = () => {
 
   const refrigerantes = useMemo(() => {
     const items = filteredProducts.filter((p) => p.category.toLowerCase() === 'refrigerantes');
-    const sizes = new Set<string>();
-    const bySize: Record<string, typeof items> = {};
+    // Regra: tamanhos e refrigerantes para seleção devem considerar SOMENTE itens ativos.
+    const activeItems = items.filter((p) => p.available);
 
-    for (const p of items) {
-      const size = parseDrinkSize(p.name) || 'un';
-      sizes.add(size);
-      (bySize[size] ||= []).push(p);
+    const sizeLabelFor = (p: any) => (p.drinkSizeName as string | null) ?? parseDrinkSize(p.name) ?? 'un';
+    const baseNameFor = (p: any) => (p.drinkSizeName ? p.name : stripDrinkSize(p.name));
+
+    const bySize: Record<string, typeof items> = {};
+    for (const p of activeItems) {
+      const sizeLabel = sizeLabelFor(p);
+      (bySize[sizeLabel] ||= []).push(p);
     }
 
-    const orderedSizes = Array.from(sizes).sort((a, b) => {
+    // Lista de tamanhos para o cliente:
+    // - Prioriza a tabela drink_sizes (ativos)
+    // - Mantém compatibilidade com tamanhos "no nome" (regex)
+    const orderedSizes: string[] = [];
+
+    // 1) tamanhos do cadastro (somente se tiver ao menos 1 refrigerante ativo naquele tamanho)
+    for (const s of drinkSizes) {
+      if ((bySize[s.name] || []).length > 0) orderedSizes.push(s.name);
+    }
+
+    // 2) tamanhos legados (regex/un)
+    const legacySizes = Object.keys(bySize).filter((k) => !orderedSizes.includes(k));
+    const legacyOrdered = legacySizes.sort((a, b) => {
       if (a === 'un') return 1;
       if (b === 'un') return -1;
       const toMl = (s: string) => {
@@ -132,12 +168,15 @@ const MenuPage: React.FC = () => {
       return toMl(a) - toMl(b);
     });
 
-    orderedSizes.forEach((size) => {
-      bySize[size] = (bySize[size] || []).sort((a, b) => stripDrinkSize(a.name).localeCompare(stripDrinkSize(b.name)));
-    });
+    orderedSizes.push(...legacyOrdered);
 
-    return { items, orderedSizes, bySize };
-  }, [filteredProducts]);
+    // Ordena produtos dentro do tamanho
+    for (const size of Object.keys(bySize)) {
+      bySize[size] = [...bySize[size]].sort((a: any, b: any) => baseNameFor(a).localeCompare(baseNameFor(b)));
+    }
+
+    return { items, orderedSizes, bySize, baseNameFor, sizeLabelFor };
+  }, [filteredProducts, drinkSizes]);
 
   const [selectedSodaSize, setSelectedSodaSize] = useState<string | null>(null);
   const [selectedSodaProductId, setSelectedSodaProductId] = useState<string | null>(null);
@@ -359,7 +398,7 @@ const MenuPage: React.FC = () => {
                             <SelectContent className="z-50 bg-popover text-popover-foreground">
                               {refrigerantes.orderedSizes.map((size) => (
                                 <SelectItem key={size} value={size}>
-                                  {size === 'un' ? 'Unidade' : size.toUpperCase()}
+                                  {size === 'un' ? 'Unidade' : size}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -388,9 +427,9 @@ const MenuPage: React.FC = () => {
                                     </SelectItem>
                                   );
                                 }
-                                return visibleItems.map((p) => (
+                                 return visibleItems.map((p) => (
                                   <SelectItem key={p.id} value={p.id}>
-                                    {stripDrinkSize(p.name)} — R$ {p.price.toFixed(2)}
+                                     {refrigerantes.baseNameFor(p)} — R$ {p.price.toFixed(2)}
                                   </SelectItem>
                                 ));
                               })()}

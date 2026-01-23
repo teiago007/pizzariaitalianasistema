@@ -34,6 +34,8 @@ interface DbProduct {
   category: string;
   image_url: string | null;
   available: boolean;
+  drink_size_id?: string | null;
+  drink_size?: { id: string; name: string; available: boolean } | null;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +68,8 @@ const mapDbToProduct = (db: DbProduct): Product => ({
   category: db.category,
   image: db.image_url || undefined,
   available: db.available,
+  drinkSizeId: db.drink_size_id ?? null,
+  drinkSizeName: db.drink_size?.name ?? null,
 });
 
 export function useProducts() {
@@ -79,7 +83,11 @@ export function useProducts() {
       const [flavorsRes, bordersRes, productsRes] = await Promise.all([
         supabase.from('pizza_flavors').select('*').eq('available', true).order('name'),
         supabase.from('pizza_borders').select('*').eq('available', true).order('name'),
-        supabase.from('products').select('*').eq('available', true).order('name'),
+        supabase
+          .from('products')
+          .select('*, drink_size:drink_sizes(id,name,available)')
+          .eq('available', true)
+          .order('name'),
       ]);
 
       if (flavorsRes.error) throw flavorsRes.error;
@@ -120,7 +128,7 @@ export function useAdminProducts() {
       const [flavorsRes, bordersRes, productsRes] = await Promise.all([
         supabase.from('pizza_flavors').select('*').order('name'),
         supabase.from('pizza_borders').select('*').order('name'),
-        supabase.from('products').select('*').order('name'),
+        supabase.from('products').select('*, drink_size:drink_sizes(id,name,available)').order('name'),
       ]);
 
       if (flavorsRes.error) throw flavorsRes.error;

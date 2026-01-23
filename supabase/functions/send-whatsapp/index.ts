@@ -71,8 +71,10 @@ serve(async (req) => {
 
     const stripDrinkSize = (name: string) => (name || '').replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
 
-    const formatProductLabel = (productName?: string) => {
-      const name = productName || 'Produto';
+    const formatProductLabel = (product?: any) => {
+      const name = String(product?.name || 'Produto');
+      const explicitSize = product?.drinkSizeName as string | null | undefined;
+      if (explicitSize) return `${name} (${String(explicitSize)})`;
       const size = parseDrinkSize(name);
       if (!size) return name;
       return `${stripDrinkSize(name)} (${size.toUpperCase()})`;
@@ -85,7 +87,7 @@ serve(async (req) => {
           return `🍕 Pizza ${flavors} (${item.size}) x${item.quantity}`;
         }
 
-        const label = formatProductLabel(item.product?.name);
+        const label = formatProductLabel(item.product);
         return `🥤 ${label} x${item.quantity}`;
       })
       .join('\n');
