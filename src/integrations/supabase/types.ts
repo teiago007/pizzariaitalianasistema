@@ -91,6 +91,33 @@ export type Database = {
         }
         Relationships: []
       }
+      drink_sizes: {
+        Row: {
+          available: boolean
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_daily_counters: {
         Row: {
           last_seq: number
@@ -360,6 +387,7 @@ export type Database = {
           category: string
           created_at: string
           description: string | null
+          drink_size_id: string | null
           id: string
           image_url: string | null
           name: string
@@ -371,6 +399,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          drink_size_id?: string | null
           id?: string
           image_url?: string | null
           name: string
@@ -382,13 +411,22 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          drink_size_id?: string | null
           id?: string
           image_url?: string | null
           name?: string
           price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_drink_size_id_fkey"
+            columns: ["drink_size_id"]
+            isOneToOne: false
+            referencedRelation: "drink_sizes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

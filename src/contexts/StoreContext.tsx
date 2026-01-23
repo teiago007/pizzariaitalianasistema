@@ -106,7 +106,8 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        // Join opcional com drink_sizes para refrigerantes (mantém compatibilidade quando null)
+        .select('*, drink_size:drink_sizes(id,name,available,display_order)')
         .eq('available', true)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
@@ -198,7 +199,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
       };
     }) || [];
 
-  const products: Product[] = productsData?.map(p => ({
+  const products: Product[] = productsData?.map((p: any) => ({
     id: p.id,
     name: p.name,
     description: p.description || '',
@@ -206,6 +207,8 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     category: p.category,
     image: p.image_url || undefined,
     available: p.available,
+    drinkSizeId: p.drink_size_id ?? p.drinkSizeId ?? null,
+    drinkSizeName: p.drink_size?.name ?? null,
   })) || [];
 
   return (

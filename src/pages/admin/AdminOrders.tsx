@@ -149,7 +149,10 @@ const AdminOrders: React.FC = () => {
 
   const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
 
-  const formatProductLabel = (name: string) => {
+  const formatProductLabel = (product: any) => {
+    const name = String(product?.name || 'Produto');
+    const explicitSize = product?.drinkSizeName as string | null | undefined;
+    if (explicitSize) return `${name} (${String(explicitSize)})`;
     const size = parseDrinkSize(name);
     if (!size) return name;
     return `${stripDrinkSize(name)} (${size.toUpperCase()})`;
@@ -253,7 +256,7 @@ const AdminOrders: React.FC = () => {
         return `
           <div class="row">
             <div class="qty">${item.quantity}x</div>
-            <div class="name"><div class="title">${escapeHtml(formatProductLabel(p?.name || 'Produto'))}</div></div>
+            <div class="name"><div class="title">${escapeHtml(formatProductLabel(p))}</div></div>
             <div class="price">R$ ${fmt(item.unitPrice * item.quantity)}</div>
           </div>
         `;
