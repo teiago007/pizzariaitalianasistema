@@ -28,6 +28,32 @@ const parseDrinkSize = (name: string) => {
 
 const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
 
+const isSodaProduct = (p: { category?: string; name?: string }) => {
+  const c = String(p.category || '').toLowerCase();
+  const n = String(p.name || '').toLowerCase();
+  return c === 'refrigerantes' || n.includes('refrigerante');
+};
+
+const hasInvalidSodaInCart = (items: any[]) => {
+  return items.some((it) => {
+    if (!it || it.type !== 'product') return false;
+    const product = (it as any).product;
+    if (!product || !isSodaProduct(product)) return false;
+
+    const explicitSize = (product as any).drinkSizeName as string | null | undefined;
+    const legacySize = parseDrinkSize(String(product.name || ''));
+    const sizeOk = Boolean(explicitSize || legacySize);
+
+    const base = explicitSize
+      ? String(product.name || '')
+      : legacySize
+        ? stripDrinkSize(String(product.name || ''))
+        : String(product.name || '');
+    const genericName = base.toLowerCase().includes('refrigerante');
+    return !sizeOk || genericName;
+  });
+};
+
 const safeMoney = (value: unknown) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -249,6 +275,7 @@ const CartPage: React.FC = () => {
 
   const nextOpenShort = formatNextOpenShort(availability.nextOpenAt);
   const canCheckout = availability.isOpenNow;
+  const showSodaFixCta = hasInvalidSodaInCart(items as any[]);
 
   return (
     <div className="min-h-screen py-8 md:py-12">
@@ -279,6 +306,31 @@ const CartPage: React.FC = () => {
               </AnimatePresence>
             </CardContent>
           </Card>
+
+          {showSodaFixCta && (
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Ajuste o refrigerante antes de finalizar</p>
+                    <p className="text-sm text-muted-foreground">
+                      Existe um refrigerante genérico/sem tamanho (ex: “REFRIGERANTE 2L”). Selecione um refrigerante
+                      específico por tamanho.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      toast.info('Selecione o tamanho e depois o refrigerante.');
+                      navigate(paths.menu);
+                    }}
+                  >
+                    Corrigir agora
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Summary */}
           <Card>
