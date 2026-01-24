@@ -41,6 +41,15 @@ const parseDrinkSize = (name: string) => {
 
 const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
 
+// Compatibilidade: alguns projetos mantêm refrigerantes na categoria "Bebidas" com nomes
+// como "REFRIGERANTE 2L". Para não quebrar o cadastro existente, consideramos
+// refrigerante por categoria OU pelo nome.
+const isSodaProduct = (p: { category: string; name: string }) => {
+  const c = (p.category || '').toLowerCase();
+  const n = (p.name || '').toLowerCase();
+  return c === 'refrigerantes' || n.includes('refrigerante');
+};
+
 const MenuPage: React.FC = () => {
   const { flavors, products, isLoadingFlavors, isLoadingProducts } = useStore();
   const { addProduct } = useCart();
@@ -130,7 +139,7 @@ const MenuPage: React.FC = () => {
   }, [filteredFlavors]);
 
   const refrigerantes = useMemo(() => {
-    const items = filteredProducts.filter((p) => p.category.toLowerCase() === 'refrigerantes');
+    const items = filteredProducts.filter((p) => isSodaProduct(p));
     // Regra: tamanhos e refrigerantes para seleção devem considerar SOMENTE itens ativos.
     const activeItems = items.filter((p) => p.available);
 
@@ -487,10 +496,12 @@ const MenuPage: React.FC = () => {
               )}
 
               {productCategories.map((category) => {
+                // Evita "furar" o fluxo novo (tamanho -> refrigerante) adicionando direto pelo card.
+                // Mesmo que a categoria seja "Bebidas", removemos daqui os itens que são refrigerantes.
                 if (category.toLowerCase() === 'refrigerantes') return null;
                 if (productCategoryFilter !== '__all__' && productCategoryFilter !== category) return null;
 
-                const categoryProducts = filteredProducts.filter((p) => p.category === category);
+                const categoryProducts = filteredProducts.filter((p) => p.category === category && !isSodaProduct(p));
                 if (categoryProducts.length === 0) return null;
 
                 return (
@@ -511,7 +522,7 @@ const MenuPage: React.FC = () => {
                   </div>
                 );
               })}
-              {filteredProducts.filter((p) => p.category.toLowerCase() !== 'refrigerantes').length === 0 && (
+              {filteredProducts.filter((p) => !isSodaProduct(p)).length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum produto encontrado</p>
                 </div>
