@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tables } from '@/integrations/supabase/types';
 import PizzaCategoriesManager from '@/components/admin/PizzaCategoriesManager';
 import DrinkSizesManager from '@/components/admin/DrinkSizesManager';
+import DrinkProductsDuplicator from '@/components/admin/DrinkProductsDuplicator';
 import { useSearchParams } from 'react-router-dom';
 
 type PizzaFlavor = Tables<'pizza_flavors'>;
@@ -544,11 +545,12 @@ const AdminProducts: React.FC = () => {
       </div>
 
       <Tabs defaultValue="pizzas" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+        <TabsList className="grid w-full max-w-3xl grid-cols-6">
           <TabsTrigger value="pizzas">🍕 Pizzas</TabsTrigger>
           <TabsTrigger value="categorias">📂 Categorias</TabsTrigger>
           <TabsTrigger value="bordas">🧀 Bordas</TabsTrigger>
           <TabsTrigger value="tamanhos">🥤 Tamanhos</TabsTrigger>
+          <TabsTrigger value="duplicar">🧃 Duplicar</TabsTrigger>
           <TabsTrigger value="outros">🥤 Outros</TabsTrigger>
         </TabsList>
 
@@ -720,6 +722,11 @@ const AdminProducts: React.FC = () => {
         {/* Tamanhos de refrigerante */}
         <TabsContent value="tamanhos" className="space-y-4">
           <DrinkSizesManager />
+        </TabsContent>
+
+        {/* Duplicar refrigerantes por tamanho */}
+        <TabsContent value="duplicar" className="space-y-4">
+          <DrinkProductsDuplicator />
         </TabsContent>
 
         {/* Outros Produtos Tab */}

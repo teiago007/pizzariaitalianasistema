@@ -13,6 +13,39 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
+const parseDrinkSize = (name: string) => {
+  const m = name.trim().match(/(\d+[\.,]?\d*)\s*(ml|l)\s*$/i);
+  if (!m) return null;
+  const value = m[1].replace(',', '.');
+  const unit = m[2].toLowerCase();
+  return `${value}${unit}`;
+};
+
+const stripDrinkSize = (name: string) => name.replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
+
+const isSodaProduct = (p: { category?: string; name?: string }) => {
+  const c = String(p.category || '').toLowerCase();
+  const n = String(p.name || '').toLowerCase();
+  return c === 'refrigerantes' || n.includes('refrigerante');
+};
+
+const hasInvalidSodaInCart = (items: any[]) => {
+  return items.some((it) => {
+    if (!it || it.type !== 'product') return false;
+    const product = (it as any).product;
+    if (!product || !isSodaProduct(product)) return false;
+
+    const explicitSize = (product as any).drinkSizeName as string | null | undefined;
+    const legacySize = parseDrinkSize(String(product.name || ''));
+    const sizeOk = Boolean(explicitSize || legacySize);
+
+    const base = explicitSize ? String(product.name || '') : legacySize ? stripDrinkSize(String(product.name || '')) : String(product.name || '');
+    const genericName = base.toLowerCase().includes('refrigerante');
+    // Bloqueia quando faltar tamanho OU quando o nome ainda é genérico (ex: "REFRIGERANTE 2L").
+    return !sizeOk || genericName;
+  });
+};
+
 const formatNextOpenShort = (nextOpenAt?: { date: string; time: string }) => {
   if (!nextOpenAt) return undefined;
   const d = new Date(`${nextOpenAt.date}T00:00:00-03:00`);
@@ -86,6 +119,11 @@ const CheckoutPage: React.FC = () => {
     }
     if (!customerInfo.address.trim()) {
       toast.error('Por favor, informe seu endereço');
+      return;
+    }
+
+    if (hasInvalidSodaInCart(items as any[])) {
+      toast.error('Escolha o refrigerante específico antes de finalizar (volte ao carrinho e ajuste).');
       return;
     }
 
