@@ -145,7 +145,9 @@ export type Database = {
           customer_complement: string | null
           customer_name: string
           customer_neighborhood: string | null
+          customer_number: string | null
           customer_phone: string
+          customer_reference: string | null
           customer_street: string | null
           id: string
           items: Json
@@ -167,7 +169,9 @@ export type Database = {
           customer_complement?: string | null
           customer_name: string
           customer_neighborhood?: string | null
+          customer_number?: string | null
           customer_phone: string
+          customer_reference?: string | null
           customer_street?: string | null
           id?: string
           items: Json
@@ -189,7 +193,9 @@ export type Database = {
           customer_complement?: string | null
           customer_name?: string
           customer_neighborhood?: string | null
+          customer_number?: string | null
           customer_phone?: string
+          customer_reference?: string | null
           customer_street?: string | null
           id?: string
           items?: Json

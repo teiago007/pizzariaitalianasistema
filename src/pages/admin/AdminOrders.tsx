@@ -389,6 +389,9 @@ const AdminOrders: React.FC = () => {
         <div className="col-span-2">
           <p className="text-sm text-muted-foreground">Endereço</p>
           <p className="font-medium">{order.customer.address}</p>
+          {(order.customer as any).reference ? (
+            <p className="text-sm text-muted-foreground">Ref: {String((order.customer as any).reference)}</p>
+          ) : null}
           {order.customer.complement && (
             <p className="text-sm text-muted-foreground">{order.customer.complement}</p>
           )}
@@ -486,6 +489,16 @@ const AdminOrders: React.FC = () => {
               Desconectar
             </Button>
           ) : null}
+
+            <Button
+              variant="outline"
+              onClick={() => bt.printTest58mm({ storeName: String(settings.name || ''), storeAddress: settings.address || undefined })}
+              disabled={!bt.isConnected}
+              title={bt.isConnected ? 'Testar impressão Bluetooth (58mm)' : 'Conecte Bluetooth para testar'}
+            >
+              <Printer className="w-4 h-4" />
+              Testar impressão (58mm)
+            </Button>
         </div>
       </div>
 

@@ -463,6 +463,16 @@ const StaffCheckoutPage: React.FC = () => {
                     Desconectar
                   </Button>
                 ) : null}
+
+                <Button
+                  variant="outline"
+                  onClick={() => bt.printTest58mm({ storeName: String(settings.name || ""), storeAddress: settings.address || undefined })}
+                  disabled={!bt.isConnected}
+                  title={bt.isConnected ? "Testar impressão Bluetooth (58mm)" : "Conecte Bluetooth para testar"}
+                >
+                  <Printer className="w-4 h-4" />
+                  Testar impressão
+                </Button>
               </div>
             </div>
 

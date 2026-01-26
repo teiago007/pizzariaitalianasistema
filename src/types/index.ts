@@ -91,8 +91,12 @@ export interface CustomerInfo {
   phone: string;
   /** Rua/Avenida (para filtros no módulo Entregador) */
   street?: string;
+  /** Número (para exibição e mapa) */
+  number?: string;
   /** Bairro (para filtros no módulo Entregador) */
   neighborhood?: string;
+  /** Ponto de referência (opcional) */
+  reference?: string;
   address: string;
   complement?: string;
 }

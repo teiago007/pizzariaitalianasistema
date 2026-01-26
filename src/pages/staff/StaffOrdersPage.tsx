@@ -350,10 +350,20 @@ const StaffOrdersPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
-                <Bluetooth className="w-4 h-4" />
-                {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
-              </Button>
+            <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
+              <Bluetooth className="w-4 h-4" />
+              {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => bt.printTest58mm({ storeName: String(settings.name || ''), storeAddress: settings.address || undefined })}
+              disabled={!bt.isConnected}
+              title={bt.isConnected ? 'Testar impressão Bluetooth (58mm)' : 'Conecte Bluetooth para testar'}
+            >
+              <Printer className="w-4 h-4" />
+              Testar impressão
+            </Button>
             <Link to="/funcionario/carrinho">
               <Button variant="outline">Ver carrinho</Button>
             </Link>

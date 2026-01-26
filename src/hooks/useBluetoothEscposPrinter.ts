@@ -65,6 +65,38 @@ export function useBluetoothEscposPrinter() {
     [connectedName]
   );
 
+  const printTest58mm = useCallback(
+    async (params: { storeName: string; storeAddress?: string }) => {
+      return print58mm({
+        storeName: params.storeName,
+        storeAddress: params.storeAddress,
+        order: {
+          id: 'TESTE0000',
+          createdAt: new Date(),
+          items: [
+            {
+              type: 'product',
+              id: 'test-item',
+              quantity: 1,
+              unitPrice: 0,
+              product: {
+                id: 'test',
+                name: '*** TESTE DE IMPRESSAO (58mm) ***',
+                description: '',
+                price: 0,
+                category: 'Teste',
+                available: true,
+              },
+            },
+          ],
+          total: 0,
+          payment: { method: 'teste' },
+        },
+      });
+    },
+    [print58mm]
+  );
+
   const statusLabel = useMemo(() => {
     if (!connectedName) return "Bluetooth: desconectado";
     return `Bluetooth: ${connectedName}`;
@@ -78,5 +110,6 @@ export function useBluetoothEscposPrinter() {
     connect,
     disconnect,
     print58mm,
+    printTest58mm,
   };
 }
