@@ -22,6 +22,20 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+async function getEdgeFunctionErrorMessage(err: any, fallback: string) {
+  const resp = err?.context;
+  if (resp && typeof resp.json === "function") {
+    try {
+      const payload = await resp.json();
+      const msg = payload?.error;
+      if (typeof msg === "string" && msg.trim()) return msg;
+    } catch {
+      // ignore
+    }
+  }
+  return err?.message || fallback;
+}
+
 type ProfileRow = {
   id: string;
   user_id: string;
@@ -180,7 +194,7 @@ const AdminStaff: React.FC = () => {
       await refresh();
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "Erro ao salvar funcionário");
+      toast.error(await getEdgeFunctionErrorMessage(e, "Erro ao salvar funcionário"));
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +212,7 @@ const AdminStaff: React.FC = () => {
       await refresh();
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "Erro ao remover funcionário");
+      toast.error(await getEdgeFunctionErrorMessage(e, "Erro ao remover funcionário"));
     } finally {
       setSavingUserId(null);
     }
