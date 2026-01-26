@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { StaffProvider } from "@/contexts/StaffContext";
+import { DeliveryProvider } from "@/contexts/DeliveryContext";
 
 // Public Pages
 import { PublicLayout } from "@/components/public/PublicLayout";
@@ -25,6 +26,7 @@ import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminStaff from "@/pages/admin/AdminStaff";
+import AdminDeliverers from "@/pages/admin/AdminDeliverers";
 
 // Staff Pages
 import StaffLoginPage from "@/pages/staff/StaffLoginPage";
@@ -32,6 +34,11 @@ import StaffLayout from "@/pages/staff/StaffLayout";
 import StaffOrdersPage from "@/pages/staff/StaffOrdersPage";
 import StaffCartPage from "@/pages/staff/StaffCartPage";
 import StaffCheckoutPage from "@/pages/staff/StaffCheckoutPage";
+
+// Delivery Pages
+import DeliveryLayout from "@/pages/delivery/DeliveryLayout";
+import DeliveryLoginPage from "@/pages/delivery/DeliveryLoginPage";
+import DeliveryOrdersPage from "@/pages/delivery/DeliveryOrdersPage";
 
 import NotFound from "./pages/NotFound";
 
@@ -44,10 +51,11 @@ const App = () => (
         <CartProvider>
           <AdminProvider>
             <StaffProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
+              <DeliveryProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
                 {/* Public Routes - No Login Required */}
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<HomePage />} />
@@ -66,6 +74,7 @@ const App = () => (
                   <Route path="pedidos" element={<AdminOrders />} />
                   <Route path="produtos" element={<AdminProducts />} />
                   <Route path="funcionarios" element={<AdminStaff />} />
+                    <Route path="entregadores" element={<AdminDeliverers />} />
                   <Route path="configuracoes" element={<AdminSettings />} />
                 </Route>
 
@@ -77,10 +86,17 @@ const App = () => (
                     <Route path="checkout" element={<StaffCheckoutPage />} />
                   </Route>
 
+                  {/* Deliverer Routes */}
+                  <Route path="/entregador" element={<DeliveryLayout />}>
+                    <Route index element={<DeliveryLoginPage />} />
+                    <Route path="pedidos" element={<DeliveryOrdersPage />} />
+                  </Route>
+
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
+                  </Routes>
+                </BrowserRouter>
+              </DeliveryProvider>
             </StaffProvider>
           </AdminProvider>
         </CartProvider>
