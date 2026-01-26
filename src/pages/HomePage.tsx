@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, MapPin, Phone, Clock } from 'lucide-react';
+import { ArrowRight, MapPin, Phone, Clock, Download } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { useStoreAvailability } from '@/hooks/useStoreAvailability';
+import { usePwaInstallPrompt } from '@/hooks/usePwaInstallPrompt';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PizzaCard } from '@/components/public/PizzaCard';
@@ -19,6 +20,7 @@ const formatNextOpen = (nextOpenAt?: { date: string; time: string }) => {
 const HomePage: React.FC = () => {
   const { settings, flavors } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
+  const { canInstall } = usePwaInstallPrompt();
   const nextOpenLabel = formatNextOpen(availability.nextOpenAt);
 
   return (
@@ -41,6 +43,18 @@ const HomePage: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="max-w-2xl"
           >
+            {canInstall ? (
+              <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-border/30 bg-background/10 px-4 py-2 text-background backdrop-blur">
+                <span className="text-sm">Instale o app para acesso rápido</span>
+                <Link to="/install">
+                  <Button size="sm" variant="secondary">
+                    <Download className="w-4 h-4 mr-2" />
+                    Instalar
+                  </Button>
+                </Link>
+              </div>
+            ) : null}
+
             {/* Status Badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
