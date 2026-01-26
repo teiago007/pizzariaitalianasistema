@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { Check, Clock, Printer } from "lucide-react";
+import { Bluetooth, Check, Clock, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useStaff } from "@/contexts/StaffContext";
 import { useStore } from "@/contexts/StoreContext";
 import { useStoreAvailability } from "@/hooks/useStoreAvailability";
+import { useBluetoothEscposPrinter } from "@/hooks/useBluetoothEscposPrinter";
 import type { CartItem, PaymentMethod } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ const StaffCheckoutPage: React.FC = () => {
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
   const { items, total, clearCart, itemCount } = useCart();
+  const bt = useBluetoothEscposPrinter();
 
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -339,6 +341,87 @@ const StaffCheckoutPage: React.FC = () => {
     }
   };
 
+  const createOrderAndBluetoothPrint58 = async () => {
+    if (!bt.isConnected) {
+      toast.error("Conecte uma impressora Bluetooth primeiro");
+      return;
+    }
+    if (!availability.isOpenNow) {
+      const nextOpen = formatNextOpenShort(availability.nextOpenAt);
+      toast.error(nextOpen ? `Loja fechada. Próxima abertura: ${nextOpen}.` : "Loja fechada no momento.");
+      return;
+    }
+
+    if (hasInvalidSodaInCart(items as any[])) {
+      toast.error('Escolha o refrigerante específico antes de criar o pedido (volte ao carrinho e ajuste).');
+      navigate('/funcionario/carrinho');
+      return;
+    }
+
+    const parsed = staffCheckoutSchema.safeParse({ note, paymentMethod });
+    if (!parsed.success) {
+      toast.error("Verifique os dados do pedido");
+      return;
+    }
+
+    if (!user?.id) {
+      toast.error("Sessão do funcionário não encontrada");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          customer_name: "Atendimento",
+          customer_phone: "0000000000",
+          customer_address: "Balcão",
+          customer_complement: parsed.data.note?.trim() ? parsed.data.note.trim() : null,
+          items: items as unknown as import("@/integrations/supabase/types").Json,
+          payment_method: parsed.data.paymentMethod,
+          needs_change: false,
+          change_for: null,
+          total,
+          status: "CONFIRMED",
+          order_origin: "in_store",
+          created_by_user_id: user.id,
+          table_number: tableNumber.trim() ? tableNumber.trim() : null,
+        })
+        .select("id, seq_of_day")
+        .single();
+
+      if (error) throw error;
+
+      const orderId = data.id as string;
+      const seqOfDay = typeof (data as any).seq_of_day === "number" ? (data as any).seq_of_day : undefined;
+
+      await bt.print58mm({
+        storeName: String(settings.name || ""),
+        storeAddress: settings.address || undefined,
+        order: {
+          id: orderId,
+          createdAt: new Date(),
+          seqOfDay,
+          tableNumber: tableNumber.trim() ? tableNumber.trim() : undefined,
+          items,
+          total,
+          payment: { method: paymentMethod },
+        },
+      });
+
+      toast.success("Pedido criado!");
+      clearCart();
+      sessionStorage.removeItem("customerInfo");
+      navigate("/funcionario/pedidos", { replace: true });
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao criar pedido");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen py-8 md:py-12">
       <div className="container mx-auto px-4 max-w-2xl space-y-6">
@@ -368,6 +451,21 @@ const StaffCheckoutPage: React.FC = () => {
             <CardTitle>Impressão</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+              <Label className="text-sm text-muted-foreground">Bluetooth (58mm)</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
+                  <Bluetooth className="w-4 h-4" />
+                  {bt.connecting ? "Conectando..." : "Conectar"}
+                </Button>
+                {bt.isConnected ? (
+                  <Button variant="outline" onClick={bt.disconnect}>
+                    Desconectar
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
             <Label className="text-sm text-muted-foreground">Largura do papel</Label>
             <Select value={paperWidth} onValueChange={(v) => setPaperWidth(v as "80" | "53")}> 
               <SelectTrigger>
@@ -457,15 +555,28 @@ const StaffCheckoutPage: React.FC = () => {
             <Printer className="w-4 h-4 mr-2" />
             Criar pedido e imprimir nota
           </Button>
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={() => createOrderInternal({ print: false })}
-            disabled={submitting || !availability.isOpenNow}
-          >
-            <Check className="w-4 h-4 mr-2" />
-            Criar pedido
-          </Button>
+          <div className="grid gap-3">
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => createOrderInternal({ print: false })}
+              disabled={submitting || !availability.isOpenNow}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Criar pedido
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full"
+              onClick={createOrderAndBluetoothPrint58}
+              disabled={submitting || !availability.isOpenNow || !bt.isConnected}
+              title={bt.isConnected ? "Imprimir via Bluetooth 58mm" : "Conecte Bluetooth para imprimir"}
+            >
+              <Bluetooth className="w-4 h-4 mr-2" />
+              Criar e imprimir (Bluetooth 58mm)
+            </Button>
+          </div>
         </div>
 
         <Button variant="ghost" className="w-full" onClick={() => navigate("/funcionario/carrinho")}>Voltar ao carrinho</Button>
