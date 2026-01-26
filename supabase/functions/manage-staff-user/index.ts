@@ -41,6 +41,26 @@ const badRequest = (message: string) => json({ error: message }, 400);
 const unauthorized = (message: string) => json({ error: message }, 401);
 const forbidden = (message: string) => json({ error: message }, 403);
 
+const normalizeAuthAdminError = (err: any) => {
+  const code = err?.code as string | undefined;
+  const status = typeof err?.status === "number" ? err.status : 500;
+
+  // Human-friendly message for common auth errors
+  if (code === "weak_password") {
+    return {
+      status: 422,
+      message: "Senha fraca (muito comum/comprometida). Use uma senha mais forte.",
+      code,
+    };
+  }
+
+  return {
+    status,
+    message: err?.message ?? "Erro ao atualizar usuário",
+    code,
+  };
+};
+
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 serve(async (req) => {
@@ -110,7 +130,8 @@ serve(async (req) => {
       });
       if (createErr || !created.user) {
         console.error("manage-staff-user:createUser error", createErr);
-        return json({ error: createErr?.message ?? "Erro ao criar usuário" }, 500);
+        const n = normalizeAuthAdminError(createErr);
+        return json({ error: n.message, code: n.code }, n.status);
       }
 
       const userId = created.user.id;
@@ -166,7 +187,8 @@ serve(async (req) => {
         });
         if (updErr) {
           console.error("manage-staff-user:update auth error", updErr);
-          return json({ error: updErr.message }, 500);
+          const n = normalizeAuthAdminError(updErr);
+          return json({ error: n.message, code: n.code }, n.status);
         }
       }
 
