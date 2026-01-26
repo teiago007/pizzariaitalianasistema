@@ -1,12 +1,13 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Eye, Printer } from "lucide-react";
+import { Loader2, Eye, Printer, Bluetooth } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders } from "@/hooks/useOrders";
 import { useStaff } from "@/contexts/StaffContext";
 import { useStore } from "@/contexts/StoreContext";
 import { useSettings } from "@/hooks/useSettings";
+import { useBluetoothEscposPrinter } from "@/hooks/useBluetoothEscposPrinter";
 import type { Order, CartItemPizza } from "@/types";
 import { PizzaCard } from "@/components/public/PizzaCard";
 import { ProductCard } from "@/components/public/ProductCard";
@@ -64,6 +65,7 @@ const StaffOrdersPage: React.FC = () => {
 
   const { orders: myOrders, loading: loadingOrders } = useOrders(ordersQueryOptions);
   const { settings } = useSettings();
+  const bt = useBluetoothEscposPrinter();
   const { flavors, products, isLoadingFlavors, isLoadingProducts } = useStore();
 
   const { data: pizzaCategories = [] } = useQuery({
@@ -230,6 +232,23 @@ const StaffOrdersPage: React.FC = () => {
     }
   };
 
+  const handleBluetoothPrint58 = async (order: Order) => {
+    await bt.print58mm({
+      storeName: String(settings.name || ''),
+      storeAddress: settings.address || undefined,
+      order: {
+        id: order.id,
+        createdAt: order.createdAt,
+        seqOfDay: order.seqOfDay,
+        tableNumber: order.tableNumber,
+        // pedido do staff não precisa de dados de entrega
+        items: order.items,
+        total: order.total,
+        payment: { method: order.payment?.method },
+      },
+    });
+  };
+
   const OrderDetailsStaff: React.FC<{ order: Order }> = ({ order }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -331,6 +350,10 @@ const StaffOrdersPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
+                <Bluetooth className="w-4 h-4" />
+                {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
+              </Button>
             <Link to="/funcionario/carrinho">
               <Button variant="outline">Ver carrinho</Button>
             </Link>
@@ -476,6 +499,16 @@ const StaffOrdersPage: React.FC = () => {
 
                           <Button variant="outline" size="icon" onClick={() => handlePrintOrder(order)} title="Imprimir">
                             <Printer className="w-4 h-4" />
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleBluetoothPrint58(order)}
+                            title={bt.isConnected ? 'Imprimir Bluetooth (58mm)' : 'Conecte Bluetooth para imprimir'}
+                            disabled={!bt.isConnected}
+                          >
+                            <Bluetooth className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>

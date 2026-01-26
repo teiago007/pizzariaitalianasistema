@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2, Send, Trash2, Search } from 'lucide-react';
+import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2, Send, Trash2, Search, Bluetooth } from 'lucide-react';
 import { useOrders } from '@/hooks/useOrders';
 import { useSettings } from '@/hooks/useSettings';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
 import { Order, OrderStatus, CartItemPizza } from '@/types';
+import { useBluetoothEscposPrinter } from '@/hooks/useBluetoothEscposPrinter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ const addDaysISO = (date: string, days: number) => {
 const AdminOrders: React.FC = () => {
   const { orders, loading, updateOrderStatus, deleteOrder } = useOrders();
   const { settings } = useSettings();
+  const bt = useBluetoothEscposPrinter();
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
 
   // Filtros + abas + paginação
@@ -335,6 +337,32 @@ const AdminOrders: React.FC = () => {
     }
   };
 
+  const handlePrintBluetooth58 = async (order: Order) => {
+    await bt.print58mm({
+      storeName: String(settings.name || ''),
+      storeAddress: settings.address || undefined,
+      order: {
+        id: order.id,
+        createdAt: order.createdAt,
+        seqOfDay: order.seqOfDay,
+        tableNumber: order.tableNumber,
+        customer: {
+          name: order.customer?.name,
+          phone: order.customer?.phone,
+          address: order.customer?.address,
+          complement: order.customer?.complement,
+        },
+        items: order.items,
+        total: order.total,
+        payment: {
+          method: order.payment?.method,
+          needsChange: order.payment?.needsChange,
+          changeFor: order.payment?.changeFor,
+        },
+      },
+    });
+  };
+
   const OrderDetails: React.FC<{ order: Order }> = ({ order }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -442,9 +470,23 @@ const AdminOrders: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-foreground">Pedidos</h1>
-        <p className="text-muted-foreground">Gerencie os pedidos confirmados</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">Pedidos</h1>
+          <p className="text-muted-foreground">Gerencie os pedidos confirmados</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
+            <Bluetooth className="w-4 h-4" />
+            {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
+          </Button>
+          {bt.isConnected ? (
+            <Button variant="outline" onClick={bt.disconnect}>
+              Desconectar
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
@@ -611,6 +653,16 @@ const AdminOrders: React.FC = () => {
 
                               <Button variant="outline" size="icon" onClick={() => handlePrint(order)} title="Imprimir pedido">
                                 <Printer className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handlePrintBluetooth58(order)}
+                                title={bt.isConnected ? 'Imprimir Bluetooth (58mm)' : 'Conecte Bluetooth para imprimir'}
+                                disabled={!bt.isConnected}
+                              >
+                                <Bluetooth className="w-4 h-4" />
                               </Button>
 
                               {/* Delete Order Button */}
