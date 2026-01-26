@@ -13,6 +13,7 @@ type CreateBody = {
   email: string;
   password: string;
   full_name?: string | null;
+  role?: "staff" | "entregador";
 };
 
 type UpdateBody = {
@@ -93,6 +94,9 @@ serve(async (req) => {
       const email = String(body.email ?? "").trim().toLowerCase();
       const password = String(body.password ?? "");
       const fullName = (body.full_name ?? null) as string | null;
+      const role = (body.role ?? "staff") as "staff" | "entregador";
+
+      if (role !== "staff" && role !== "entregador") return badRequest("Role inválido");
 
       if (!email || !isEmail(email)) return badRequest("Email inválido");
       if (!password || password.length < 6) return badRequest("Senha deve ter ao menos 6 caracteres");
@@ -125,10 +129,10 @@ serve(async (req) => {
         return json({ error: "Erro ao criar perfil" }, 500);
       }
 
-      // Add staff role
+      // Add role (staff | entregador)
       const { error: roleInsertErr } = await adminClient.from("user_roles").insert({
         user_id: userId,
-        role: "staff",
+        role,
       });
       if (roleInsertErr) {
         console.error("manage-staff-user:insert role error", roleInsertErr);

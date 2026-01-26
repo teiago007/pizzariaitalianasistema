@@ -5,6 +5,7 @@ import {
   LayoutDashboard, 
   ShoppingBag, 
   Pizza, 
+  Truck,
   Settings, 
   LogOut, 
   Menu,
@@ -40,6 +41,7 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
     { path: '/admin/produtos', label: 'Produtos', icon: Pizza },
     { path: '/admin/funcionarios', label: 'Funcionários', icon: Users },
+    { path: '/admin/entregadores', label: 'Entregadores', icon: Truck },
     { path: '/admin/configuracoes', label: 'Configurações', icon: Settings },
   ];
 

@@ -3,13 +3,23 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, MapPin, Phone, Clock } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
+import { useStoreAvailability } from '@/hooks/useStoreAvailability';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PizzaCard } from '@/components/public/PizzaCard';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
+const formatNextOpen = (nextOpenAt?: { date: string; time: string }) => {
+  if (!nextOpenAt) return undefined;
+  const d = new Date(`${nextOpenAt.date}T00:00:00-03:00`);
+  const dayLabel = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(d);
+  return `${dayLabel} às ${nextOpenAt.time}`;
+};
+
 const HomePage: React.FC = () => {
   const { settings, flavors } = useStore();
+  const { availability } = useStoreAvailability(settings.isOpen);
+  const nextOpenLabel = formatNextOpen(availability.nextOpenAt);
 
   return (
     <div className="min-h-screen">
@@ -38,7 +48,7 @@ const HomePage: React.FC = () => {
               transition={{ delay: 0.2 }}
               className="mb-6"
             >
-              {settings.isOpen ? (
+              {availability.isOpenNow ? (
                 <Badge className="bg-secondary text-secondary-foreground px-4 py-2 text-sm">
                   <Clock className="w-4 h-4 mr-2" />
                   Estamos Abertos
@@ -47,6 +57,7 @@ const HomePage: React.FC = () => {
                 <Badge variant="destructive" className="px-4 py-2 text-sm">
                   <Clock className="w-4 h-4 mr-2" />
                   Fechado no momento
+                  {nextOpenLabel ? ` • abre ${nextOpenLabel}` : ''}
                 </Badge>
               )}
             </motion.div>
@@ -55,7 +66,7 @@ const HomePage: React.FC = () => {
               {settings.name}
             </h1>
             <p className="text-lg md:text-xl text-background/80 mb-8 max-w-lg">
-              Sabor único e exclusivo! Desde 2016, com excelência em cada ingrediente e cuidado em cada receita!
+              Sabor único e exclusivo! Desde 2015, com excelência em cada ingrediente e cuidado em cada receita!
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
