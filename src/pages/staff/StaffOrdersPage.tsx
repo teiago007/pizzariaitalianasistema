@@ -36,9 +36,33 @@ const parseDrinkSize = (name: string) => {
 
 const stripDrinkSize = (name: string) => (name || '').replace(/\s*(\d+[\.,]?\d*)\s*(ml|l)\s*$/i, '').trim();
 
+const TZ = "America/Sao_Paulo";
+
+const todayStartISOInTZ = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const dateISO = `${map.year}-${map.month}-${map.day}`;
+  return `${dateISO}T00:00:00-03:00`;
+};
+
 const StaffOrdersPage: React.FC = () => {
   const { user } = useStaff();
-  const { orders, loading: loadingOrders } = useOrders();
+  const ordersQueryOptions = useMemo(() => {
+    const userId = user?.id || "00000000-0000-0000-0000-000000000000";
+    return {
+      orderOrigin: "in_store",
+      createdByUserId: userId,
+      createdFrom: todayStartISOInTZ(),
+      limit: 200,
+    };
+  }, [user?.id]);
+
+  const { orders: myOrders, loading: loadingOrders } = useOrders(ordersQueryOptions);
   const { settings } = useSettings();
   const { flavors, products, isLoadingFlavors, isLoadingProducts } = useStore();
 
@@ -84,18 +108,7 @@ const StaffOrdersPage: React.FC = () => {
     return byCat;
   }, [products]);
 
-  // Only show orders created by this staff user + from today (in_store)
-  const myOrders = useMemo(() => {
-    if (!user?.id) return [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return orders.filter(
-      (o) =>
-        o.orderOrigin === "in_store" &&
-        o.createdByUserId === user.id &&
-        new Date(o.createdAt) >= today
-    );
-  }, [orders, user]);
+  // myOrders já vem filtrado no backend (origem + criador + hoje)
 
   const escapeHtml = (s: string) =>
     s
