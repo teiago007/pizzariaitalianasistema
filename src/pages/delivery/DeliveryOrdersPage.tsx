@@ -31,6 +31,21 @@ const googleMapsUrl = (address: string) => {
   return `https://www.google.com/maps/search/?api=1&query=${q}`;
 };
 
+const orderFullAddress = (o: Order) => {
+  const street = String(o.customer.street || '').trim();
+  const number = String((o.customer as any).number || '').trim();
+  const neighborhood = String(o.customer.neighborhood || '').trim();
+  const base = street ? street + (number ? `, ${number}` : '') + (neighborhood ? ` - ${neighborhood}` : '') : String(o.customer.address || '').trim();
+  const complement = String(o.customer.complement || '').trim();
+  const reference = String((o.customer as any).reference || '').trim();
+  return {
+    base,
+    complement: complement || undefined,
+    reference: reference || undefined,
+    mapsQuery: `${base}${complement ? ` ${complement}` : ''}${reference ? ` ${reference}` : ''}`.trim(),
+  };
+};
+
 const DeliveryOrdersPage: React.FC = () => {
   const { settings } = useSettings();
   const [pendingOnly, setPendingOnly] = useState(true);
@@ -190,8 +205,16 @@ const DeliveryOrdersPage: React.FC = () => {
 
                 <div>
                   <p className="text-sm text-muted-foreground">Endereço</p>
-                  <p className="text-foreground">{o.customer.address}</p>
-                  {o.customer.complement ? <p className="text-sm text-muted-foreground">{o.customer.complement}</p> : null}
+                  {(() => {
+                    const addr = orderFullAddress(o);
+                    return (
+                      <>
+                        <p className="text-foreground">{addr.base || o.customer.address}</p>
+                        {addr.complement ? <p className="text-sm text-muted-foreground">{addr.complement}</p> : null}
+                        {addr.reference ? <p className="text-sm text-muted-foreground">Ref: {addr.reference}</p> : null}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -202,7 +225,11 @@ const DeliveryOrdersPage: React.FC = () => {
                     </a>
                   </Button>
                   <Button asChild variant="outline">
-                    <a href={googleMapsUrl(`${o.customer.address} ${o.customer.complement || ""}`.trim())} target="_blank" rel="noreferrer">
+                    <a
+                      href={googleMapsUrl(orderFullAddress(o).mapsQuery)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       <MapPin className="w-4 h-4" />
                       Abrir mapa
                       <ExternalLink className="w-4 h-4" />

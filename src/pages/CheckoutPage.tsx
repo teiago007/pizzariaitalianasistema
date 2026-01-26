@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, MapPin, Phone, User, Clock } from 'lucide-react';
@@ -67,12 +67,22 @@ const CheckoutPage: React.FC = () => {
     name: '',
     phone: '',
     street: '',
+    number: '',
     neighborhood: '',
+    reference: '',
     address: '',
     complement: '',
   });
 
-  const composedAddress = `${(customerInfo.street || '').trim()}${customerInfo.neighborhood ? ` - ${customerInfo.neighborhood.trim()}` : ''}`.trim();
+  const composedAddress = useMemo(() => {
+    const street = String(customerInfo.street || '').trim();
+    const number = String(customerInfo.number || '').trim();
+    const neighborhood = String(customerInfo.neighborhood || '').trim();
+
+    const streetLine = street + (number ? `, ${number}` : '');
+    const neighLine = neighborhood ? ` - ${neighborhood}` : '';
+    return `${streetLine}${neighLine}`.trim();
+  }, [customerInfo.street, customerInfo.number, customerInfo.neighborhood]);
 
   const pizzasInCart = items
     .map((it, idx) => ({ it, idx }))
@@ -122,6 +132,10 @@ const CheckoutPage: React.FC = () => {
     }
     if (!String(customerInfo.street || '').trim()) {
       toast.error('Por favor, informe a rua/avenida');
+      return;
+    }
+    if (!String(customerInfo.number || '').trim()) {
+      toast.error('Por favor, informe o número');
       return;
     }
     if (!String(customerInfo.neighborhood || '').trim()) {
@@ -243,6 +257,18 @@ const CheckoutPage: React.FC = () => {
               </div>
 
               <div>
+                <Label htmlFor="number">Número *</Label>
+                <Input
+                  id="number"
+                  name="number"
+                  value={customerInfo.number || ''}
+                  onChange={handleChange}
+                  placeholder="Ex: 189"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
                 <Label htmlFor="neighborhood">Bairro *</Label>
                 <Input
                   id="neighborhood"
@@ -250,6 +276,18 @@ const CheckoutPage: React.FC = () => {
                   value={customerInfo.neighborhood || ''}
                   onChange={handleChange}
                   placeholder="Ex: Centro"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="reference">Ponto de referência (opcional)</Label>
+                <Input
+                  id="reference"
+                  name="reference"
+                  value={customerInfo.reference || ''}
+                  onChange={handleChange}
+                  placeholder="Ex: Próximo ao mercado"
                   className="mt-1.5"
                 />
               </div>

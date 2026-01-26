@@ -452,6 +452,14 @@ const PaymentPage: React.FC = () => {
                   {customerInfo.address}
                 </span>
               </div>
+              {(customerInfo as any).reference ? (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Referência:</span>
+                  <span className="font-medium text-foreground text-right max-w-[60%]">
+                    {String((customerInfo as any).reference)}
+                  </span>
+                </div>
+              ) : null}
               <div className="border-t border-border pt-2 mt-2 flex justify-between items-center">
                 <span className="font-semibold">Total do Pedido</span>
                 <span className="text-2xl font-bold text-primary">

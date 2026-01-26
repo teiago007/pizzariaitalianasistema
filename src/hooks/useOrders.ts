@@ -23,7 +23,9 @@ interface DbOrder {
   customer_name: string;
   customer_phone: string;
   customer_street?: string | null;
+  customer_number?: string | null;
   customer_neighborhood?: string | null;
+  customer_reference?: string | null;
   customer_address: string;
   customer_complement: string | null;
   order_origin?: string | null;
@@ -47,7 +49,9 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
     name: dbOrder.customer_name,
     phone: dbOrder.customer_phone,
     street: dbOrder.customer_street ?? undefined,
+    number: dbOrder.customer_number ?? undefined,
     neighborhood: dbOrder.customer_neighborhood ?? undefined,
+    reference: dbOrder.customer_reference ?? undefined,
     address: dbOrder.customer_address,
     complement: dbOrder.customer_complement || undefined,
   },
@@ -72,7 +76,9 @@ const ORDERS_SELECT = [
   'customer_name',
   'customer_phone',
   'customer_street',
+  'customer_number',
   'customer_neighborhood',
+  'customer_reference',
   'customer_address',
   'customer_complement',
   'order_origin',
@@ -226,7 +232,9 @@ export function useOrders(options: UseOrdersOptions = {}) {
           customer_name: customer.name,
           customer_phone: customer.phone,
           customer_street: customer.street?.trim() || null,
+          customer_number: customer.number?.trim() || null,
           customer_neighborhood: customer.neighborhood?.trim() || null,
+          customer_reference: customer.reference?.trim() || null,
           customer_address: customer.address,
           customer_complement: customer.complement || null,
           items: items as unknown as import('@/integrations/supabase/types').Json,
