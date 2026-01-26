@@ -144,7 +144,9 @@ export type Database = {
           customer_address: string
           customer_complement: string | null
           customer_name: string
+          customer_neighborhood: string | null
           customer_phone: string
+          customer_street: string | null
           id: string
           items: Json
           needs_change: boolean | null
@@ -164,7 +166,9 @@ export type Database = {
           customer_address: string
           customer_complement?: string | null
           customer_name: string
+          customer_neighborhood?: string | null
           customer_phone: string
+          customer_street?: string | null
           id?: string
           items: Json
           needs_change?: boolean | null
@@ -184,7 +188,9 @@ export type Database = {
           customer_address?: string
           customer_complement?: string | null
           customer_name?: string
+          customer_neighborhood?: string | null
           customer_phone?: string
+          customer_street?: string | null
           id?: string
           items?: Json
           needs_change?: boolean | null

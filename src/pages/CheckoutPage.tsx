@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 const parseDrinkSize = (name: string) => {
@@ -67,9 +66,13 @@ const CheckoutPage: React.FC = () => {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     phone: '',
+    street: '',
+    neighborhood: '',
     address: '',
     complement: '',
   });
+
+  const composedAddress = `${(customerInfo.street || '').trim()}${customerInfo.neighborhood ? ` - ${customerInfo.neighborhood.trim()}` : ''}`.trim();
 
   const pizzasInCart = items
     .map((it, idx) => ({ it, idx }))
@@ -117,8 +120,12 @@ const CheckoutPage: React.FC = () => {
       toast.error('Por favor, informe um telefone válido');
       return;
     }
-    if (!customerInfo.address.trim()) {
-      toast.error('Por favor, informe seu endereço');
+    if (!String(customerInfo.street || '').trim()) {
+      toast.error('Por favor, informe a rua/avenida');
+      return;
+    }
+    if (!String(customerInfo.neighborhood || '').trim()) {
+      toast.error('Por favor, informe o bairro');
       return;
     }
 
@@ -128,7 +135,12 @@ const CheckoutPage: React.FC = () => {
     }
 
     // Store customer info and navigate to payment
-    sessionStorage.setItem('customerInfo', JSON.stringify(customerInfo));
+    // Keep address as a composed string for compatibility and display.
+    const payload: CustomerInfo = {
+      ...customerInfo,
+      address: composedAddress,
+    };
+    sessionStorage.setItem('customerInfo', JSON.stringify(payload));
     navigate(paths.payment);
   };
 
@@ -219,16 +231,33 @@ const CheckoutPage: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="address">Endereço Completo *</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  value={customerInfo.address}
+                <Label htmlFor="street">Rua / Avenida *</Label>
+                <Input
+                  id="street"
+                  name="street"
+                  value={customerInfo.street || ''}
                   onChange={handleChange}
-                  placeholder="Rua, número, bairro..."
+                  placeholder="Ex: Rua das Flores, 123"
                   className="mt-1.5"
-                  rows={3}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="neighborhood">Bairro *</Label>
+                <Input
+                  id="neighborhood"
+                  name="neighborhood"
+                  value={customerInfo.neighborhood || ''}
+                  onChange={handleChange}
+                  placeholder="Ex: Centro"
+                  className="mt-1.5"
+                />
+              </div>
+
+              {/* Compatibilidade: mantém um campo composto para visualização/validação */}
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                <p className="text-muted-foreground">Endereço (resumo)</p>
+                <p className="font-medium text-foreground">{composedAddress || '—'}</p>
               </div>
 
               <div>

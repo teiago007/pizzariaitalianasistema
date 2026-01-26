@@ -8,6 +8,9 @@ import type { Order } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const TZ = "America/Sao_Paulo";
 
@@ -30,8 +33,13 @@ const googleMapsUrl = (address: string) => {
 
 const DeliveryOrdersPage: React.FC = () => {
   const { settings } = useSettings();
+  const [pendingOnly, setPendingOnly] = useState(true);
+  const [phoneQuery, setPhoneQuery] = useState("");
+  const [streetQuery, setStreetQuery] = useState("");
+  const [neighborhoodQuery, setNeighborhoodQuery] = useState("");
+
   const { orders, loading, refetch } = useOrders({
-    status: "READY",
+    status: pendingOnly ? "READY" : (["READY", "DELIVERED"] as const),
     createdFrom: todayStartISOInTZ(),
     limit: 300,
   });
@@ -39,8 +47,34 @@ const DeliveryOrdersPage: React.FC = () => {
 
   const deliverable = useMemo(() => {
     // Evita mostrar pedidos presenciais (in_store)
-    return orders.filter((o) => o.orderOrigin !== "in_store");
-  }, [orders]);
+    const normalize = (v: string) => String(v || "").trim().toLowerCase();
+    const normalizePhone = (v: string) => String(v || "").replace(/\D/g, "");
+
+    const phoneNeedle = normalizePhone(phoneQuery);
+    const streetNeedle = normalize(streetQuery);
+    const neighNeedle = normalize(neighborhoodQuery);
+
+    return orders
+      .filter((o) => o.orderOrigin !== "in_store")
+      .filter((o) => {
+        if (phoneNeedle) {
+          const hay = normalizePhone(o.customer.phone);
+          if (!hay.includes(phoneNeedle)) return false;
+        }
+
+        if (streetNeedle) {
+          const hay = normalize(o.customer.street || o.customer.address);
+          if (!hay.includes(streetNeedle)) return false;
+        }
+
+        if (neighNeedle) {
+          const hay = normalize(o.customer.neighborhood || o.customer.address);
+          if (!hay.includes(neighNeedle)) return false;
+        }
+
+        return true;
+      });
+  }, [orders, phoneQuery, streetQuery, neighborhoodQuery]);
 
   const markDelivered = async (order: Order) => {
     setMarkingId(order.id);
@@ -63,7 +97,50 @@ const DeliveryOrdersPage: React.FC = () => {
     <div className="space-y-6">
       <header className="space-y-2">
         <h1 className="font-display text-2xl font-bold text-foreground">Pedidos prontos</h1>
-        <p className="text-muted-foreground">Mostrando pedidos com status <strong>READY</strong> de hoje.</p>
+        <p className="text-muted-foreground">
+          Mostrando pedidos de hoje. Modo: <strong>{pendingOnly ? "somente pendentes" : "pendentes + entregues"}</strong>.
+        </p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
+            <Switch id="pendingOnly" checked={pendingOnly} onCheckedChange={(v) => setPendingOnly(Boolean(v))} />
+            <Label htmlFor="pendingOnly" className="text-sm">Somente pendentes</Label>
+          </div>
+
+          <div>
+            <Label htmlFor="phoneSearch" className="text-sm">Buscar telefone</Label>
+            <Input
+              id="phoneSearch"
+              value={phoneQuery}
+              onChange={(e) => setPhoneQuery(e.target.value)}
+              placeholder="Ex: 9898134..."
+              className="mt-1.5"
+              inputMode="tel"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="streetSearch" className="text-sm">Filtrar rua</Label>
+            <Input
+              id="streetSearch"
+              value={streetQuery}
+              onChange={(e) => setStreetQuery(e.target.value)}
+              placeholder="Ex: Manoel Bezerra"
+              className="mt-1.5"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="neighSearch" className="text-sm">Filtrar bairro</Label>
+            <Input
+              id="neighSearch"
+              value={neighborhoodQuery}
+              onChange={(e) => setNeighborhoodQuery(e.target.value)}
+              placeholder="Ex: Centro"
+              className="mt-1.5"
+            />
+          </div>
+        </div>
       </header>
 
       {loading ? (

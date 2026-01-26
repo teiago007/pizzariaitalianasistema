@@ -4,6 +4,8 @@ import { Plus, Check } from 'lucide-react';
 import { PizzaFlavor, PizzaSize, PizzaBorder } from '@/types';
 import { useStore } from '@/contexts/StoreContext';
 import { useCart } from '@/contexts/CartContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +19,7 @@ interface PizzaCardProps {
 }
 
 export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
-  const { sizes, borders } = useStore();
+  const { borders } = useStore();
   const { addPizza } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<PizzaSize>('M');
@@ -27,6 +29,66 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
   const [flavorCount, setFlavorCount] = useState<1 | 2>(1);
 
   const { flavors: allFlavors } = useStore();
+
+  const { data: categoryNameById = new Map<string, string>() } = useQuery({
+    queryKey: ['pizza-categories-names'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pizza_categories')
+        .select('id,name,display_order,available')
+        .eq('available', true)
+        .order('display_order');
+
+      if (error) throw error;
+      return new Map<string, string>((data || []).map((c: any) => [c.id, String(c.name || '')]));
+    },
+  });
+
+  const groupedFlavors = useMemo(() => {
+    const desiredOrder = ['Tradicionais', 'Especiais', 'Doces'];
+    const groups = new Map<string, PizzaFlavor[]>();
+
+    const getGroup = (f: PizzaFlavor) => {
+      const catName = f.categoryId ? categoryNameById.get(f.categoryId) : undefined;
+      const normalized = String(catName || '').trim().toLowerCase();
+      if (normalized === 'tradicionais' || normalized === 'tradicional') return 'Tradicionais';
+      if (normalized === 'especiais' || normalized === 'especial') return 'Especiais';
+      if (normalized === 'doces' || normalized === 'doce') return 'Doces';
+      return catName?.trim() ? catName.trim() : 'Outros';
+    };
+
+    for (const f of allFlavors) {
+      const g = getGroup(f);
+      const list = groups.get(g) || [];
+      list.push(f);
+      groups.set(g, list);
+    }
+
+    // Sort each group by name
+    for (const [k, list] of groups.entries()) {
+      groups.set(
+        k,
+        [...list].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+      );
+    }
+
+    const keys = [
+      ...desiredOrder.filter((k) => (groups.get(k) || []).length > 0),
+      ...[...groups.keys()].filter((k) => !desiredOrder.includes(k)).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    ];
+
+    return keys.map((k) => ({
+      title: k,
+      flavors: groups.get(k) || [],
+    }));
+  }, [allFlavors, categoryNameById]);
+
+  const isMixingCategories = useMemo(() => {
+    if (selectedFlavors.length < 2) return false;
+    const a = selectedFlavors[0]?.categoryId || null;
+    const b = selectedFlavors[1]?.categoryId || null;
+    return a !== b;
+  }, [selectedFlavors]);
 
   const handleOpenModal = () => {
     setSelectedFlavors([flavor]);
@@ -189,27 +251,45 @@ export const PizzaCard: React.FC<PizzaCardProps> = ({ flavor }) => {
             {/* Second Flavor Selection */}
             {flavorCount === 2 && (
               <div>
-                <h4 className="font-medium mb-3">Selecione os Sabores ({selectedFlavors.length}/2)</h4>
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                  {allFlavors.map((f) => {
-                    const isSelected = selectedFlavors.some(sf => sf.id === f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => toggleSecondFlavor(f)}
-                        className={`p-3 border rounded-lg text-left transition-all ${
-                          isSelected 
-                            ? 'border-primary bg-primary/5' 
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {isSelected && <Check className="w-4 h-4 text-primary" />}
-                          <span className="font-medium text-sm">{f.name}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="space-y-1">
+                  <h4 className="font-medium">Selecione os Sabores ({selectedFlavors.length}/2)</h4>
+                  {isMixingCategories && (
+                    <p className="text-sm text-muted-foreground">
+                      Misturando categorias: o valor será o do sabor mais caro no tamanho escolhido.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
+                  {groupedFlavors.map((group) => (
+                    <div key={group.title} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">{group.title}</p>
+                        <span className="text-xs text-muted-foreground">{group.flavors.length}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.flavors.map((f) => {
+                          const isSelected = selectedFlavors.some((sf) => sf.id === f.id);
+                          return (
+                            <button
+                              key={f.id}
+                              onClick={() => toggleSecondFlavor(f)}
+                              className={`p-3 border rounded-lg text-left transition-all ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isSelected && <Check className="w-4 h-4 text-primary" />}
+                                <span className="font-medium text-sm">{f.name}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
