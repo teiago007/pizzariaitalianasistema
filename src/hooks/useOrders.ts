@@ -3,6 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderStatus, CartItem, CustomerInfo, PaymentMethod } from '@/types';
 import { toast } from 'sonner';
 
+export type UseOrdersOptions = {
+  /** Filtra por 1 ou mais status (ex: ['READY','DELIVERED']) */
+  status?: OrderStatus | OrderStatus[];
+  /** Filtra pedidos a partir de created_at (inclusive) */
+  createdFrom?: Date | string;
+  /** Filtra pedidos até created_at (inclusive) */
+  createdTo?: Date | string;
+  /** Filtra por origem (ex: 'in_store') */
+  orderOrigin?: string;
+  /** Filtra por usuário criador (ex: staff) */
+  createdByUserId?: string;
+  /** Limita quantidade retornada (útil em telas não-admin) */
+  limit?: number;
+};
+
 interface DbOrder {
   id: string;
   customer_name: string;
@@ -48,26 +63,72 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
   updatedAt: new Date(dbOrder.updated_at),
 });
 
-export function useOrders() {
+const ORDERS_SELECT = [
+  'id',
+  'customer_name',
+  'customer_phone',
+  'customer_address',
+  'customer_complement',
+  'order_origin',
+  'table_number',
+  'created_by_user_id',
+  'seq_of_day',
+  'items',
+  'payment_method',
+  'needs_change',
+  'change_for',
+  'total',
+  'status',
+  'pix_transaction_id',
+  'created_at',
+  'updated_at',
+].join(',');
+
+const toIso = (d: Date | string) => (typeof d === 'string' ? d : d.toISOString());
+
+export function useOrders(options: UseOrdersOptions = {}) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchOrders = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
-        .select('*')
+        .select(ORDERS_SELECT)
         .order('created_at', { ascending: false });
+
+      if (options.orderOrigin) query = query.eq('order_origin', options.orderOrigin);
+      if (options.createdByUserId) query = query.eq('created_by_user_id', options.createdByUserId);
+
+      if (options.status) {
+        const statuses = Array.isArray(options.status) ? options.status : [options.status];
+        query = query.in('status', statuses);
+      }
+
+      if (options.createdFrom) query = query.gte('created_at', toIso(options.createdFrom));
+      if (options.createdTo) query = query.lte('created_at', toIso(options.createdTo));
+
+      if (typeof options.limit === 'number') query = query.limit(options.limit);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      setOrders((data as DbOrder[]).map(mapDbToOrder));
+      setOrders(((data ?? []) as unknown as DbOrder[]).map(mapDbToOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [
+    options.createdByUserId,
+    options.createdFrom,
+    options.createdTo,
+    options.limit,
+    options.orderOrigin,
+    // status pode ser array (instável); normaliza em string para dependência
+    Array.isArray(options.status) ? options.status.join('|') : options.status,
+  ]);
 
   useEffect(() => {
     fetchOrders();
@@ -83,7 +144,6 @@ export function useOrders() {
           table: 'orders',
         },
         (payload) => {
-          console.log('Order change received:', payload);
           if (payload.eventType === 'INSERT') {
             const newOrder = mapDbToOrder(payload.new as DbOrder);
             setOrders(prev => [newOrder, ...prev]);
