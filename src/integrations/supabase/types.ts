@@ -551,7 +551,7 @@ export type Database = {
       next_order_seq: { Args: { p_date: string }; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "user" | "staff"
+      app_role: "admin" | "user" | "staff" | "entregador"
       cash_movement_type: "SALE" | "SUPPLY" | "WITHDRAW"
       order_status:
         | "PENDING"
@@ -689,7 +689,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "staff"],
+      app_role: ["admin", "user", "staff", "entregador"],
       cash_movement_type: ["SALE", "SUPPLY", "WITHDRAW"],
       order_status: [
         "PENDING",
