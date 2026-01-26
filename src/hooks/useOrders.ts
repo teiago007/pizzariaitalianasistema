@@ -266,7 +266,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       if (error) throw error;
 
-      // Send WhatsApp notification
+      // Dispara WhatsApp em background (não bloquear UI)
       const messageTypeMap: Record<OrderStatus, string> = {
         PENDING: 'order_pending',
         CONFIRMED: 'order_confirmed',
@@ -276,9 +276,14 @@ export function useOrders(options: UseOrdersOptions = {}) {
         CANCELLED: 'order_cancelled',
       };
 
-      await supabase.functions.invoke('send-whatsapp', {
-        body: { orderId, messageType: messageTypeMap[status] },
-      });
+      void supabase.functions
+        .invoke('send-whatsapp', {
+          body: { orderId, messageType: messageTypeMap[status] },
+        })
+        .then(({ error }) => {
+          if (error) console.warn('send-whatsapp failed:', error);
+        })
+        .catch((err) => console.warn('send-whatsapp failed:', err));
 
       toast.success('Status atualizado');
     } catch (error) {
@@ -296,10 +301,15 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       if (error) throw error;
 
-      // Send confirmation WhatsApp
-      await supabase.functions.invoke('send-whatsapp', {
-        body: { orderId, messageType: 'order_confirmed' },
-      });
+      // Dispara WhatsApp em background (não bloquear UI)
+      void supabase.functions
+        .invoke('send-whatsapp', {
+          body: { orderId, messageType: 'order_confirmed' },
+        })
+        .then(({ error }) => {
+          if (error) console.warn('send-whatsapp failed:', error);
+        })
+        .catch((err) => console.warn('send-whatsapp failed:', err));
 
       return true;
     } catch (error) {
