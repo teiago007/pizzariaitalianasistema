@@ -22,6 +22,8 @@ interface DbOrder {
   id: string;
   customer_name: string;
   customer_phone: string;
+  customer_street?: string | null;
+  customer_neighborhood?: string | null;
   customer_address: string;
   customer_complement: string | null;
   order_origin?: string | null;
@@ -44,6 +46,8 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
   customer: {
     name: dbOrder.customer_name,
     phone: dbOrder.customer_phone,
+    street: dbOrder.customer_street ?? undefined,
+    neighborhood: dbOrder.customer_neighborhood ?? undefined,
     address: dbOrder.customer_address,
     complement: dbOrder.customer_complement || undefined,
   },
@@ -67,6 +71,8 @@ const ORDERS_SELECT = [
   'id',
   'customer_name',
   'customer_phone',
+  'customer_street',
+  'customer_neighborhood',
   'customer_address',
   'customer_complement',
   'order_origin',
@@ -85,6 +91,27 @@ const ORDERS_SELECT = [
 ].join(',');
 
 const toIso = (d: Date | string) => (typeof d === 'string' ? d : d.toISOString());
+
+const isOrderMatchingOptions = (order: Order, options: UseOrdersOptions) => {
+  if (options.orderOrigin && order.orderOrigin !== options.orderOrigin) return false;
+  if (options.createdByUserId && order.createdByUserId !== options.createdByUserId) return false;
+
+  if (options.status) {
+    const statuses = Array.isArray(options.status) ? options.status : [options.status];
+    if (!statuses.includes(order.status)) return false;
+  }
+
+  if (options.createdFrom) {
+    const from = new Date(toIso(options.createdFrom));
+    if (order.createdAt < from) return false;
+  }
+  if (options.createdTo) {
+    const to = new Date(toIso(options.createdTo));
+    if (order.createdAt > to) return false;
+  }
+
+  return true;
+};
 
 export function useOrders(options: UseOrdersOptions = {}) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -144,14 +171,36 @@ export function useOrders(options: UseOrdersOptions = {}) {
           table: 'orders',
         },
         (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const id = (payload.old as DbOrder).id;
+            setOrders((prev) => prev.filter((o) => o.id !== id));
+            return;
+          }
+
+          const mapped = mapDbToOrder(payload.new as DbOrder);
+          const shouldExist = isOrderMatchingOptions(mapped, options);
+
           if (payload.eventType === 'INSERT') {
-            const newOrder = mapDbToOrder(payload.new as DbOrder);
-            setOrders(prev => [newOrder, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedOrder = mapDbToOrder(payload.new as DbOrder);
-            setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-          } else if (payload.eventType === 'DELETE') {
-            setOrders(prev => prev.filter(o => o.id !== (payload.old as DbOrder).id));
+            if (!shouldExist) return;
+            setOrders((prev) => {
+              if (prev.some((o) => o.id === mapped.id)) return prev;
+              return [mapped, ...prev];
+            });
+            return;
+          }
+
+          if (payload.eventType === 'UPDATE') {
+            setOrders((prev) => {
+              const exists = prev.some((o) => o.id === mapped.id);
+
+              if (shouldExist) {
+                if (exists) return prev.map((o) => (o.id === mapped.id ? mapped : o));
+                return [mapped, ...prev];
+              }
+
+              // Se não bate nos filtros atuais, remove da lista
+              return exists ? prev.filter((o) => o.id !== mapped.id) : prev;
+            });
           }
         }
       )
@@ -176,6 +225,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
         .insert({
           customer_name: customer.name,
           customer_phone: customer.phone,
+          customer_street: customer.street?.trim() || null,
+          customer_neighborhood: customer.neighborhood?.trim() || null,
           customer_address: customer.address,
           customer_complement: customer.complement || null,
           items: items as unknown as import('@/integrations/supabase/types').Json,

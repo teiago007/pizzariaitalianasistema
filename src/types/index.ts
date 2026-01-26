@@ -89,6 +89,10 @@ export type CartItem = CartItemPizza | CartItemProduct;
 export interface CustomerInfo {
   name: string;
   phone: string;
+  /** Rua/Avenida (para filtros no módulo Entregador) */
+  street?: string;
+  /** Bairro (para filtros no módulo Entregador) */
+  neighborhood?: string;
   address: string;
   complement?: string;
 }
