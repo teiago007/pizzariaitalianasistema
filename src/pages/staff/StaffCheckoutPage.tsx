@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { Bluetooth, Check, Clock, Printer } from "lucide-react";
+import { Bluetooth, Check, Clock, Printer, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -81,6 +81,17 @@ const StaffCheckoutPage: React.FC = () => {
   const { availability } = useStoreAvailability(settings.isOpen);
   const { items, total, clearCart, itemCount } = useCart();
   const bt = useBluetoothEscposPrinter();
+  const showOpenInNewTab = React.useMemo(() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  }, []);
+
+  const openInNewTab = React.useCallback(() => {
+    window.open(window.location.href, "_blank", "noopener,noreferrer");
+  }, []);
 
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -454,6 +465,12 @@ const StaffCheckoutPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
               <Label className="text-sm text-muted-foreground">Bluetooth (58mm)</Label>
               <div className="flex flex-wrap items-center gap-2">
+                {showOpenInNewTab ? (
+                  <Button variant="outline" onClick={openInNewTab}>
+                    <ExternalLink className="w-4 h-4" />
+                    Abrir em nova aba (impressão)
+                  </Button>
+                ) : null}
                 <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
                   <Bluetooth className="w-4 h-4" />
                   {bt.connecting ? "Conectando..." : "Conectar"}
