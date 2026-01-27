@@ -75,14 +75,40 @@ async function findWritableCharacteristic(server: any) {
 }
 
 export async function connectBluetoothPrinter(): Promise<BluetoothPrinter> {
+  // Web Bluetooth normalmente exige contexto de topo (não funciona bem dentro de iframes/previews)
+  try {
+    if (typeof window !== 'undefined' && window.self !== window.top) {
+      throw new Error(
+        'Bluetooth do navegador não funciona dentro do preview. Abra o sistema em uma nova aba (ou use o app instalado/PWA) e tente novamente.'
+      );
+    }
+  } catch {
+    // Se não conseguirmos acessar window.top (política de segurança), trate como não-top-level
+    throw new Error(
+      'Bluetooth do navegador não funciona dentro do preview. Abra o sistema em uma nova aba (ou use o app instalado/PWA) e tente novamente.'
+    );
+  }
+
   if (!(navigator as any).bluetooth) {
     throw new Error('Bluetooth não suportado neste navegador/dispositivo. Use Chrome/Edge (Android/desktop).');
   }
 
-  const device = await (navigator as any).bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: COMMON_SERVICE_UUIDS,
-  });
+  let device: any;
+  try {
+    device = await (navigator as any).bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: COMMON_SERVICE_UUIDS,
+    });
+  } catch (e: any) {
+    // NotAllowedError costuma aparecer quando o usuário cancela o seletor ou quando falta gesto do usuário
+    const msg = String(e?.message || '');
+    if (e?.name === 'NotAllowedError' && /cancelled the requestDevice\(\) chooser/i.test(msg)) {
+      throw new Error(
+        'Seleção de dispositivo cancelada. Clique em “Conectar” e escolha a impressora na janela do sistema (não feche o seletor sem selecionar).'
+      );
+    }
+    throw e;
+  }
 
   // Web Bluetooth suporta apenas BLE (GATT). Muitos modelos “Bluetooth” de impressora são SPP/clássico.
   if (!device?.gatt) {
