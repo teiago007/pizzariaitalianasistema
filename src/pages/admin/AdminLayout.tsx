@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useStore } from '@/contexts/StoreContext';
+import { useOrders } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const AdminLayout: React.FC = () => {
@@ -23,6 +25,11 @@ const AdminLayout: React.FC = () => {
   const { settings } = useStore();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+
+  // Contagem de pedidos pendentes (PENDING) para exibir badge/alerta no menu
+  const { orders: pendingOrders } = useOrders({ status: 'PENDING' });
+  const pendingCount = pendingOrders.length;
 
   if (isLoading) {
     return (
@@ -38,7 +45,7 @@ const AdminLayout: React.FC = () => {
 
   const navItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
+    { path: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag, showPendingBadge: true },
     { path: '/admin/produtos', label: 'Produtos', icon: Pizza },
     { path: '/admin/usuarios', label: 'Usuários', icon: Users },
     { path: '/admin/configuracoes', label: 'Configurações', icon: Settings },
@@ -60,7 +67,12 @@ const AdminLayout: React.FC = () => {
             }`}
           >
             <item.icon className="w-5 h-5" />
-            <span className="font-medium">{item.label}</span>
+            <span className="font-medium flex-1">{item.label}</span>
+            {item.showPendingBadge && pendingCount > 0 && (
+              <Badge variant="secondary" className="ml-auto">
+                {pendingCount}
+              </Badge>
+            )}
           </Link>
         );
       })}
@@ -74,27 +86,50 @@ const AdminLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-1 bg-card border-r border-border">
+      <motion.aside
+        className="hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col"
+        animate={{ width: isSidebarOpen ? 256 : 64 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      >
+        <div className="flex flex-col flex-1 bg-card border-r border-border overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-lg">
               🍕
             </div>
-            <div>
-              <h2 className="font-display font-bold text-foreground">{settings.name}</h2>
-              <p className="text-xs text-muted-foreground">Painel Admin</p>
-            </div>
+            {isSidebarOpen && (
+              <div>
+                <h2 className="font-display font-bold text-foreground">{settings.name}</h2>
+                <p className="text-xs text-muted-foreground">Painel Admin</p>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 px-4 py-6 overflow-y-auto">
+            {pendingCount > 0 && isSidebarOpen && (
+              <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                <p className="font-medium text-foreground">Pedidos pendentes</p>
+                <p className="text-muted-foreground">
+                  Você tem <span className="font-semibold text-foreground">{pendingCount}</span> pedido(s) aguardando ação.
+                </p>
+              </div>
+            )}
             <NavLinks />
           </div>
 
           <div className="p-4 border-t border-border space-y-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => setIsSidebarOpen((v) => !v)}
+            >
+              <Menu className="w-4 h-4" />
+              {isSidebarOpen ? 'Recolher menu' : ''}
+            </Button>
             <Link to="/">
               <Button variant="outline" className="w-full justify-start gap-2">
                 <Home className="w-4 h-4" />
-                Ver Loja
+                {isSidebarOpen ? 'Ver Loja' : ''}
               </Button>
             </Link>
             <Button
@@ -103,11 +138,11 @@ const AdminLayout: React.FC = () => {
               onClick={handleLogout}
             >
               <LogOut className="w-4 h-4" />
-              Sair
+              {isSidebarOpen ? 'Sair' : ''}
             </Button>
           </div>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-50 bg-card border-b border-border">
@@ -159,7 +194,7 @@ const AdminLayout: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="lg:pl-64">
+      <main className={isSidebarOpen ? 'lg:pl-64' : 'lg:pl-16'}>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 10 }}
