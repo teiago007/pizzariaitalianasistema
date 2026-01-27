@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Eye, Printer, Bluetooth } from "lucide-react";
+import { Loader2, Eye, Printer, Bluetooth, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders } from "@/hooks/useOrders";
@@ -66,6 +66,17 @@ const StaffOrdersPage: React.FC = () => {
   const { orders: myOrders, loading: loadingOrders } = useOrders(ordersQueryOptions);
   const { settings } = useSettings();
   const bt = useBluetoothEscposPrinter();
+  const showOpenInNewTab = React.useMemo(() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  }, []);
+
+  const openInNewTab = React.useCallback(() => {
+    window.open(window.location.href, "_blank", "noopener,noreferrer");
+  }, []);
   const { flavors, products, isLoadingFlavors, isLoadingProducts } = useStore();
 
   const { data: pizzaCategories = [] } = useQuery({
@@ -350,6 +361,12 @@ const StaffOrdersPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {showOpenInNewTab ? (
+              <Button variant="outline" onClick={openInNewTab}>
+                <ExternalLink className="w-4 h-4" />
+                Abrir em nova aba (impressão)
+              </Button>
+            ) : null}
             <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
               <Bluetooth className="w-4 h-4" />
               {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}

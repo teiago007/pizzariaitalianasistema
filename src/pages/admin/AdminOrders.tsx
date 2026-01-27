@@ -1,7 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2, Send, Trash2, Search, Bluetooth } from 'lucide-react';
+import {
+  Printer,
+  Eye,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Truck,
+  MessageCircle,
+  Loader2,
+  Send,
+  Trash2,
+  Search,
+  Bluetooth,
+  ExternalLink,
+} from 'lucide-react';
 import { useOrders } from '@/hooks/useOrders';
 import { useSettings } from '@/hooks/useSettings';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
@@ -57,6 +71,17 @@ const AdminOrders: React.FC = () => {
   const { user } = useAdmin();
   const { prefs: notifPrefs } = useNotificationPreferences(user?.id);
   const bt = useBluetoothEscposPrinter();
+  const showOpenInNewTab = React.useMemo(() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  }, []);
+
+  const openInNewTab = React.useCallback(() => {
+    window.open(window.location.href, '_blank', 'noopener,noreferrer');
+  }, []);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -521,6 +546,12 @@ const AdminOrders: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {showOpenInNewTab ? (
+            <Button variant="outline" onClick={openInNewTab}>
+              <ExternalLink className="w-4 h-4" />
+              Abrir em nova aba (impressão)
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
             <Bluetooth className="w-4 h-4" />
             {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
