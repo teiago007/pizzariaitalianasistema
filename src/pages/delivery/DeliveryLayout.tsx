@@ -12,6 +12,7 @@ const DeliveryLayout: React.FC = () => {
   const { settings } = useStore();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
   if (isLoading) {
     return (
@@ -57,16 +58,22 @@ const DeliveryLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-1 bg-card border-r border-border">
+      <motion.aside
+        className="hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col"
+        animate={{ width: isSidebarOpen ? 256 : 64 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
+        <div className="flex flex-col flex-1 bg-card border-r border-border overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-lg">
               <Truck className="w-5 h-5 text-primary-foreground" />
             </div>
-            <div>
-              <h2 className="font-display font-bold text-foreground">{settings.name}</h2>
-              <p className="text-xs text-muted-foreground">Entregas</p>
-            </div>
+            {isSidebarOpen && (
+              <div>
+                <h2 className="font-display font-bold text-foreground">{settings.name}</h2>
+                <p className="text-xs text-muted-foreground">Entregas</p>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 px-4 py-6 overflow-y-auto">
@@ -74,13 +81,22 @@ const DeliveryLayout: React.FC = () => {
           </div>
 
           <div className="p-4 border-t border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => setIsSidebarOpen((v) => !v)}
+            >
+              <Menu className="w-4 h-4" />
+              {isSidebarOpen ? "Recolher menu" : ""}
+            </Button>
             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={logout}>
               <LogOut className="w-4 h-4" />
-              Sair
+              {isSidebarOpen ? "Sair" : ""}
             </Button>
           </div>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-50 bg-card border-b border-border">
@@ -128,7 +144,7 @@ const DeliveryLayout: React.FC = () => {
         </div>
       </header>
 
-      <main className="lg:pl-64">
+      <main className={isSidebarOpen ? "lg:pl-64" : "lg:pl-16"}>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 10 }}
