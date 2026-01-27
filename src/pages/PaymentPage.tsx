@@ -198,8 +198,7 @@ const PaymentPage: React.FC = () => {
         // ignore
       }
 
-      // Confirm immediately for cash
-      await confirmOrder(newOrderId);
+      // status já nasce CONFIRMED para dinheiro (useOrders.createOrder)
 
       clearCart();
       sessionStorage.removeItem('customerInfo');
@@ -235,8 +234,7 @@ const PaymentPage: React.FC = () => {
         // ignore
       }
 
-      // Confirm immediately for card (payment on delivery)
-      await confirmOrder(newOrderId);
+      // status já nasce CONFIRMED para cartão (useOrders.createOrder)
 
       clearCart();
       sessionStorage.removeItem('customerInfo');
@@ -332,8 +330,7 @@ const PaymentPage: React.FC = () => {
           <AlertCircle className="h-4 w-4 text-warning" />
           <AlertTitle className="text-warning">Importante</AlertTitle>
           <AlertDescription>
-            Seu pedido só será confirmado após a conclusão do pagamento. 
-            Pedidos não pagos não serão processados.
+            No PIX, seu pedido só será confirmado após a conclusão do pagamento.
           </AlertDescription>
         </Alert>
 

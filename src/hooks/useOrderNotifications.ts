@@ -69,32 +69,41 @@ const playNotificationSound = () => {
   }
 };
 
-export function useOrderNotifications(onNewOrder?: (order: Order) => void) {
+type UseOrderNotificationsOptions = {
+  /** Por padrão não toca som (evita incômodo e problemas de autoplay). */
+  playSound?: boolean;
+};
+
+export function useOrderNotifications(
+  onNewOrder?: (order: Order) => void,
+  options: UseOrderNotificationsOptions = {}
+) {
   const processedOrdersRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef(false);
 
+  const shouldPlaySound = Boolean(options.playSound);
+
   const handleNewOrder = useCallback((order: Order) => {
-    // Only notify for confirmed orders (not PENDING)
-    if (order.status === 'PENDING') return;
-    
+    // Notificação apenas para CONFIRMED (conforme solicitado)
+    if (order.status !== 'CONFIRMED') return;
+
     // Avoid duplicate notifications
     if (processedOrdersRef.current.has(order.id)) return;
     processedOrdersRef.current.add(order.id);
 
-    // Play sound
-    playNotificationSound();
+    // Play sound (opcional)
+    if (shouldPlaySound) playNotificationSound();
 
     // Show toast notification
     toast.success(
-      `🍕 Novo Pedido!`,
+      `Pedido confirmado`,
       {
-        description: `${order.customer.name} - R$ ${order.total.toFixed(2)}`,
+        description: `${order.customer.name} • R$ ${order.total.toFixed(2)}`,
         duration: 10000,
         action: {
           label: 'Ver',
           onClick: () => {
-            // Scroll to orders or navigate
-            window.location.href = '/admin/pedidos';
+            window.location.href = `/admin/pedidos?focus=${order.id}`;
           },
         },
       }
@@ -102,7 +111,7 @@ export function useOrderNotifications(onNewOrder?: (order: Order) => void) {
 
     // Call callback if provided
     onNewOrder?.(order);
-  }, [onNewOrder]);
+  }, [onNewOrder, shouldPlaySound]);
 
   useEffect(() => {
     // Mark as initialized after first render to avoid notifying existing orders
@@ -123,10 +132,8 @@ export function useOrderNotifications(onNewOrder?: (order: Order) => void) {
           if (!isInitializedRef.current) return;
           
           const newOrder = mapDbToOrder(payload.new as DbOrder);
-          // Only notify if order is already confirmed (not PENDING)
-          if (newOrder.status !== 'PENDING') {
-            handleNewOrder(newOrder);
-          }
+          // Notifica quando já nasce CONFIRMED (cartão/dinheiro)
+          handleNewOrder(newOrder);
         }
       )
       .on(
@@ -142,10 +149,8 @@ export function useOrderNotifications(onNewOrder?: (order: Order) => void) {
           const oldOrder = payload.old as DbOrder;
           const newOrder = mapDbToOrder(payload.new as DbOrder);
           
-          // Notify when order goes from PENDING to CONFIRMED
-          if (oldOrder.status === 'PENDING' && newOrder.status === 'CONFIRMED') {
-            handleNewOrder(newOrder);
-          }
+          // Notifica quando vira CONFIRMED (ex: PIX confirmado)
+          if (oldOrder.status !== 'CONFIRMED' && newOrder.status === 'CONFIRMED') handleNewOrder(newOrder);
         }
       )
       .subscribe();
@@ -158,3 +163,4 @@ export function useOrderNotifications(onNewOrder?: (order: Order) => void) {
 
   return { playNotificationSound };
 }
+

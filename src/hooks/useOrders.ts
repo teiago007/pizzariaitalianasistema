@@ -226,6 +226,10 @@ export function useOrders(options: UseOrdersOptions = {}) {
     changeFor?: number
   ): Promise<string | null> => {
     try {
+      // Regra de negócio: pedidos do cliente pagos em dinheiro/cartão devem nascer CONFIRMED.
+      // PIX mantém PENDING até confirmação do pagamento.
+      const initialStatus: OrderStatus = paymentMethod === 'pix' ? 'PENDING' : 'CONFIRMED';
+
       const { data, error } = await supabase
         .from('orders')
         .insert({
@@ -242,7 +246,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
           needs_change: needsChange || false,
           change_for: changeFor || null,
           total: total,
-          status: 'PENDING' as const,
+          status: initialStatus,
         })
         .select()
         .single();

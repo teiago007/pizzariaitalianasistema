@@ -84,7 +84,22 @@ export async function connectBluetoothPrinter(): Promise<BluetoothPrinter> {
     optionalServices: COMMON_SERVICE_UUIDS,
   });
 
-  const server = await device.gatt?.connect();
+  // Web Bluetooth suporta apenas BLE (GATT). Muitos modelos “Bluetooth” de impressora são SPP/clássico.
+  if (!device?.gatt) {
+    throw new Error(
+      'Esta impressora não expõe Bluetooth BLE (GATT). Modelos Bluetooth “clássico/SPP” (comuns em térmicas) não conectam via navegador. Use uma impressora BLE compatível ou outro método (USB/Wi‑Fi).'
+    );
+  }
+
+  let server: any;
+  try {
+    server = await device.gatt.connect();
+  } catch (e) {
+    console.error('Bluetooth GATT connect failed:', e);
+    throw new Error(
+      'Não foi possível conectar via Bluetooth (GATT). Confirme se a impressora está em modo BLE, próxima do aparelho e não pareada/conectada em outro dispositivo.'
+    );
+  }
   if (!server) throw new Error('Não foi possível conectar na impressora (GATT).');
 
   const characteristic = await findWritableCharacteristic(server);

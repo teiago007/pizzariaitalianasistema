@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader2, Send, Trash2, Search, Bluetooth } from 'lucide-react';
 import { useOrders } from '@/hooks/useOrders';
@@ -53,6 +54,7 @@ const AdminOrders: React.FC = () => {
   const { settings } = useSettings();
   const bt = useBluetoothEscposPrinter();
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Filtros + abas + paginação
   const [tab, setTab] = useState<'today' | 'week' | 'all'>('today');
@@ -63,8 +65,9 @@ const AdminOrders: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // Real-time notifications for new orders
-  useOrderNotifications((newOrder) => {
+  // Notificação no Admin quando pedido virar CONFIRMED
+  useOrderNotifications(
+    (newOrder) => {
     setNewOrderIds(prev => new Set([...prev, newOrder.id]));
     // Remove highlight after 30 seconds
     setTimeout(() => {
@@ -74,7 +77,36 @@ const AdminOrders: React.FC = () => {
         return next;
       });
     }, 30000);
-  });
+    },
+    { playSound: false }
+  );
+
+  // Deep-link: /admin/pedidos?focus=<orderId>
+  React.useEffect(() => {
+    const focus = searchParams.get('focus');
+    if (!focus) return;
+
+    // Garantir que o pedido apareça (sem filtros/aba restritiva)
+    setTab('all');
+    setStatusFilter('__all__');
+    setPhoneSearch('');
+    setDateFrom('');
+    setDateTo('');
+
+    // marca highlight e tenta scroll
+    setNewOrderIds((prev) => new Set([...prev, focus]));
+
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(`order-${focus}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // limpa o param para não repetir ao navegar
+      searchParams.delete('focus');
+      setSearchParams(searchParams, { replace: true });
+    }, 250);
+
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Exibir todos os pedidos (incluindo PENDING)
   // Motivo: pedidos feitos no público podem iniciar como PENDING e precisam aparecer no Admin para conferência.
@@ -569,7 +601,10 @@ const AdminOrders: React.FC = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                     >
-                      <Card className={isNew ? 'ring-2 ring-secondary ring-offset-2 bg-secondary/5 animate-pulse' : ''}>
+                      <Card
+                        id={`order-${order.id}`}
+                        className={isNew ? 'ring-2 ring-secondary ring-offset-2 bg-secondary/5 animate-pulse' : ''}
+                      >
                         <CardContent className="p-4">
                           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                             {/* Order Info */}
