@@ -50,10 +50,10 @@ const StaffLayout: React.FC = () => {
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            } ${isSidebarOpen ? "" : "justify-center px-2"}`}
           >
             <item.icon className="w-5 h-5" />
-            <span className="font-medium">{item.label}</span>
+            {isSidebarOpen && <span className="font-medium">{item.label}</span>}
           </Link>
         );
       })}

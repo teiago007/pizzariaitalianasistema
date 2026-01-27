@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useStore } from '@/contexts/StoreContext';
-import { useOrders } from '@/hooks/useOrders';
+import { usePendingOrdersCount } from '@/hooks/usePendingOrdersCount';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -27,9 +27,8 @@ const AdminLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
-  // Contagem de pedidos pendentes (PENDING) para exibir badge/alerta no menu
-  const { orders: pendingOrders } = useOrders({ status: 'PENDING' });
-  const pendingCount = pendingOrders.length;
+  // Contagem robusta de pedidos pendentes (não depende do limite de 1000 linhas)
+  const { count: pendingCount } = usePendingOrdersCount();
 
   if (isLoading) {
     return (
@@ -60,16 +59,19 @@ const AdminLayout: React.FC = () => {
             key={item.path}
             to={item.path}
             onClick={onItemClick}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-3 rounded-lg transition-colors ${
               isActive
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
+            } ${isSidebarOpen ? 'px-4 py-3' : 'px-2 py-3 justify-center'}`}
           >
             <item.icon className="w-5 h-5" />
-            <span className="font-medium flex-1">{item.label}</span>
+            {isSidebarOpen && <span className="font-medium flex-1">{item.label}</span>}
             {item.showPendingBadge && pendingCount > 0 && (
-              <Badge variant="secondary" className="ml-auto">
+              <Badge
+                variant="secondary"
+                className={isSidebarOpen ? 'ml-auto' : 'ml-2 min-w-6 justify-center px-1'}
+              >
                 {pendingCount}
               </Badge>
             )}
