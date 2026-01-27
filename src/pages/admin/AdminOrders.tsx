@@ -76,8 +76,9 @@ const AdminOrders: React.FC = () => {
     }, 30000);
   });
 
-  // Exibir todos os pedidos (exceto pendentes)
-  const baseOrders = useMemo(() => orders.filter(o => o.status !== 'PENDING'), [orders]);
+  // Exibir todos os pedidos (incluindo PENDING)
+  // Motivo: pedidos feitos no público podem iniciar como PENDING e precisam aparecer no Admin para conferência.
+  const baseOrders = useMemo(() => orders, [orders]);
 
   const filteredOrders = useMemo(() => {
     const now = new Date();
