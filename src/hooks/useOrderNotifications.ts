@@ -72,6 +72,10 @@ const playNotificationSound = () => {
 type UseOrderNotificationsOptions = {
   /** Por padrão não toca som (evita incômodo e problemas de autoplay). */
   playSound?: boolean;
+  /** Notificar quando um pedido entra em PENDING. Default: false */
+  notifyPending?: boolean;
+  /** Notificar quando um pedido entra/muda para CONFIRMED. Default: true */
+  notifyConfirmed?: boolean;
 };
 
 export function useOrderNotifications(
@@ -82,10 +86,15 @@ export function useOrderNotifications(
   const isInitializedRef = useRef(false);
 
   const shouldPlaySound = Boolean(options.playSound);
+  const shouldNotifyPending = Boolean(options.notifyPending);
+  const shouldNotifyConfirmed = options.notifyConfirmed !== false;
 
-  const handleNewOrder = useCallback((order: Order) => {
-    // Notificação apenas para CONFIRMED (conforme solicitado)
-    if (order.status !== 'CONFIRMED') return;
+  const handleNotify = useCallback((order: Order) => {
+    const shouldNotifyForStatus =
+      (order.status === "PENDING" && shouldNotifyPending) ||
+      (order.status === "CONFIRMED" && shouldNotifyConfirmed);
+
+    if (!shouldNotifyForStatus) return;
 
     // Avoid duplicate notifications
     if (processedOrdersRef.current.has(order.id)) return;
@@ -94,24 +103,22 @@ export function useOrderNotifications(
     // Play sound (opcional)
     if (shouldPlaySound) playNotificationSound();
 
-    // Show toast notification
-    toast.success(
-      `Pedido confirmado`,
-      {
-        description: `${order.customer.name} • R$ ${order.total.toFixed(2)}`,
-        duration: 10000,
-        action: {
-          label: 'Ver',
-          onClick: () => {
-            window.location.href = `/admin/pedidos?focus=${order.id}`;
-          },
+    const title = order.status === "PENDING" ? "Pedido pendente" : "Pedido confirmado";
+
+    toast.success(title, {
+      description: `${order.customer.name} • R$ ${order.total.toFixed(2)}`,
+      duration: 10000,
+      action: {
+        label: "Ver",
+        onClick: () => {
+          window.location.href = `/admin/pedidos?focus=${order.id}`;
         },
-      }
-    );
+      },
+    });
 
     // Call callback if provided
     onNewOrder?.(order);
-  }, [onNewOrder, shouldPlaySound]);
+  }, [onNewOrder, shouldNotifyConfirmed, shouldNotifyPending, shouldPlaySound]);
 
   useEffect(() => {
     // Mark as initialized after first render to avoid notifying existing orders
@@ -132,8 +139,8 @@ export function useOrderNotifications(
           if (!isInitializedRef.current) return;
           
           const newOrder = mapDbToOrder(payload.new as DbOrder);
-          // Notifica quando já nasce CONFIRMED (cartão/dinheiro)
-          handleNewOrder(newOrder);
+          // Notifica quando já nasce PENDING ou CONFIRMED (conforme preferências)
+          handleNotify(newOrder);
         }
       )
       .on(
@@ -149,8 +156,11 @@ export function useOrderNotifications(
           const oldOrder = payload.old as DbOrder;
           const newOrder = mapDbToOrder(payload.new as DbOrder);
           
-          // Notifica quando vira CONFIRMED (ex: PIX confirmado)
-          if (oldOrder.status !== 'CONFIRMED' && newOrder.status === 'CONFIRMED') handleNewOrder(newOrder);
+          // Notifica transições relevantes
+          if (oldOrder.status !== newOrder.status) {
+            if (newOrder.status === "CONFIRMED") handleNotify(newOrder);
+            if (newOrder.status === "PENDING") handleNotify(newOrder);
+          }
         }
       )
       .subscribe();
@@ -159,7 +169,7 @@ export function useOrderNotifications(
       clearTimeout(initTimeout);
       supabase.removeChannel(channel);
     };
-  }, [handleNewOrder]);
+  }, [handleNotify]);
 
   return { playNotificationSound };
 }

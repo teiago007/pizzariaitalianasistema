@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Store, Palette, MapPin, Phone, Upload, CreditCard, Loader2, Clock, CalendarDays, Trash2 } from 'lucide-react';
+import { Save, Store, Palette, MapPin, Phone, Upload, CreditCard, Loader2, Clock, CalendarDays, Trash2, Bell } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useAdmin } from '@/contexts/AdminContext';
+import { useNotificationPreferences, NotificationPreferences } from '@/hooks/useNotificationPreferences';
 
 type StoreHourRow = {
   id: string;
@@ -47,6 +49,16 @@ const AdminSettings: React.FC = () => {
   const [formData, setFormData] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  const { user } = useAdmin();
+  const {
+    prefs: notifPrefs,
+    save: saveNotifPrefs,
+    saving: isSavingNotif,
+    DEFAULT_PREFS,
+  } = useNotificationPreferences(user?.id);
+
+  const [notifForm, setNotifForm] = useState<NotificationPreferences>(DEFAULT_PREFS);
 
   const { data: storeHours } = useQuery({
     queryKey: ['store-hours-admin'],
@@ -90,6 +102,10 @@ const AdminSettings: React.FC = () => {
   React.useEffect(() => {
     setFormData(settings);
   }, [settings]);
+
+  React.useEffect(() => {
+    setNotifForm(notifPrefs);
+  }, [notifPrefs]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -220,6 +236,73 @@ const AdminSettings: React.FC = () => {
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isOpen: checked }))}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Notification Preferences (Admin) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              Notificações do Admin
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+              <div>
+                <Label className="text-base font-semibold">Avisar quando confirmar</Label>
+                <p className="text-sm text-muted-foreground">Mostra toast quando o pedido vira CONFIRMED</p>
+              </div>
+              <Switch
+                checked={notifForm.notify_confirmed}
+                onCheckedChange={(checked) =>
+                  setNotifForm((p) => ({ ...p, notify_confirmed: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+              <div>
+                <Label className="text-base font-semibold">Avisar quando pendente</Label>
+                <p className="text-sm text-muted-foreground">Mostra toast quando o pedido entra em PENDING</p>
+              </div>
+              <Switch
+                checked={notifForm.notify_pending}
+                onCheckedChange={(checked) =>
+                  setNotifForm((p) => ({ ...p, notify_pending: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+              <div>
+                <Label className="text-base font-semibold">Tocar som</Label>
+                <p className="text-sm text-muted-foreground">Toca um bip junto com o toast (pode depender do navegador)</p>
+              </div>
+              <Switch
+                checked={notifForm.play_sound}
+                onCheckedChange={(checked) =>
+                  setNotifForm((p) => ({ ...p, play_sound: checked }))
+                }
+              />
+            </div>
+
+            <Button
+              type="button"
+              onClick={async () => {
+                try {
+                  await saveNotifPrefs(notifForm);
+                  toast.success('Preferências de notificação salvas');
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Erro ao salvar preferências');
+                }
+              }}
+              disabled={!user?.id || isSavingNotif}
+            >
+              {isSavingNotif ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Salvar preferências
+            </Button>
           </CardContent>
         </Card>
 
