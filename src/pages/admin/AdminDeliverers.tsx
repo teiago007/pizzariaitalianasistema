@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -55,6 +56,7 @@ type DelivererForm = {
   email: string;
   full_name: string;
   password: string;
+  role: "staff" | "entregador";
 };
 
 const AdminDeliverers: React.FC = () => {
@@ -63,7 +65,7 @@ const AdminDeliverers: React.FC = () => {
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [form, setForm] = useState<DelivererForm>({ email: "", full_name: "", password: "" });
+  const [form, setForm] = useState<DelivererForm>({ email: "", full_name: "", password: "", role: "entregador" });
   const [submitting, setSubmitting] = useState(false);
 
   const { data: profiles, isLoading: loadingProfiles } = useQuery({
@@ -135,13 +137,15 @@ const AdminDeliverers: React.FC = () => {
 
   const openCreate = () => {
     setDialogMode("create");
-    setForm({ email: "", full_name: "", password: "" });
+    setForm({ email: "", full_name: "", password: "", role: "entregador" });
     setDialogOpen(true);
   };
 
   const openEdit = (p: ProfileRow) => {
     setDialogMode("edit");
-    setForm({ user_id: p.user_id, email: p.email || "", full_name: p.full_name || "", password: "" });
+    const flags = byUserId.get(p.user_id);
+    const initialRole: "staff" | "entregador" = flags?.isDeliverer ? "entregador" : "staff";
+    setForm({ user_id: p.user_id, email: p.email || "", full_name: p.full_name || "", password: "", role: initialRole });
     setDialogOpen(true);
   };
 
@@ -156,6 +160,7 @@ const AdminDeliverers: React.FC = () => {
       const email = form.email.trim().toLowerCase();
       const full_name = form.full_name.trim();
       const password = form.password;
+      const role = form.role;
       if (!email || !email.includes("@")) throw new Error("Email inválido");
 
       if (dialogMode === "create") {
@@ -166,7 +171,7 @@ const AdminDeliverers: React.FC = () => {
             email,
             password,
             full_name: full_name || null,
-            role: "entregador",
+            role,
           },
         });
         if (error) throw error;
@@ -180,6 +185,7 @@ const AdminDeliverers: React.FC = () => {
             user_id: form.user_id,
             email,
             full_name: full_name || null,
+            role,
             ...(password ? { password } : {}),
           },
         });
@@ -258,6 +264,23 @@ const AdminDeliverers: React.FC = () => {
                 </DialogHeader>
 
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tipo de usuário</Label>
+                    <Select
+                      value={form.role}
+                      onValueChange={(v) => setForm((s) => ({ ...s, role: (v as any) === "staff" ? "staff" : "entregador" }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="entregador">Entregador</SelectItem>
+                        <SelectItem value="staff">Funcionário (Staff)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Você pode trocar entre Entregador e Staff aqui.</p>
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Email</Label>
                     <Input
