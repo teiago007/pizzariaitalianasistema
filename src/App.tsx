@@ -28,6 +28,7 @@ import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminStaff from "@/pages/admin/AdminStaff";
 import AdminDeliverers from "@/pages/admin/AdminDeliverers";
+import AdminUsers from "@/pages/admin/AdminUsers";
 
 // Staff Pages
 import StaffLoginPage from "@/pages/staff/StaffLoginPage";
@@ -75,8 +76,10 @@ const App = () => (
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="pedidos" element={<AdminOrders />} />
                   <Route path="produtos" element={<AdminProducts />} />
+                  <Route path="usuarios" element={<AdminUsers />} />
+                  {/* Rotas antigas mantidas por compatibilidade */}
                   <Route path="funcionarios" element={<AdminStaff />} />
-                    <Route path="entregadores" element={<AdminDeliverers />} />
+                  <Route path="entregadores" element={<AdminDeliverers />} />
                   <Route path="configuracoes" element={<AdminSettings />} />
                 </Route>
 
