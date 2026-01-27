@@ -20,38 +20,8 @@ export const Header: React.FC = () => {
   const { settings } = useStore();
   const { availability } = useStoreAvailability(settings.isOpen);
 
-  const nextOpenLabel = formatNextOpen(availability.nextOpenAt);
-
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
-      {/* Status banner */}
-      <div className="border-b border-border bg-muted/40">
-        <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              {availability.isOpenNow ? (
-                <span>
-                  <span className="font-medium text-foreground">Aberto agora</span>
-                  {availability.closesAt ? ` • fecha às ${availability.closesAt}` : null}
-                </span>
-              ) : (
-                <span>
-                  <span className="font-medium text-foreground">Fechado</span>
-                  {nextOpenLabel ? ` • abre ${nextOpenLabel}` : null}
-                </span>
-              )}
-            </div>
-
-            {availability.isOpenNow ? (
-              <Badge variant="default" className="bg-secondary text-secondary-foreground">Aberto</Badge>
-            ) : (
-              <Badge variant="destructive">Fechado</Badge>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4">
         {/* Top bar with info */}
         <div className="hidden md:flex items-center justify-between py-2 text-sm border-b border-border/50">

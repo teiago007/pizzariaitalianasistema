@@ -40,8 +40,7 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
     { path: '/admin/produtos', label: 'Produtos', icon: Pizza },
-    { path: '/admin/funcionarios', label: 'Funcionários', icon: Users },
-    { path: '/admin/entregadores', label: 'Entregadores', icon: Truck },
+    { path: '/admin/usuarios', label: 'Usuários', icon: Users },
     { path: '/admin/configuracoes', label: 'Configurações', icon: Settings },
   ];
 
