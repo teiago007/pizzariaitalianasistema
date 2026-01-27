@@ -5,6 +5,8 @@ import { Printer, Eye, Clock, CheckCircle, XCircle, Truck, MessageCircle, Loader
 import { useOrders } from '@/hooks/useOrders';
 import { useSettings } from '@/hooks/useSettings';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
+import { useAdmin } from '@/contexts/AdminContext';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { Order, OrderStatus, CartItemPizza } from '@/types';
 import { useBluetoothEscposPrinter } from '@/hooks/useBluetoothEscposPrinter';
 import { Card, CardContent } from '@/components/ui/card';
@@ -52,6 +54,8 @@ const addDaysISO = (date: string, days: number) => {
 const AdminOrders: React.FC = () => {
   const { orders, loading, updateOrderStatus, deleteOrder } = useOrders();
   const { settings } = useSettings();
+  const { user } = useAdmin();
+  const { prefs: notifPrefs } = useNotificationPreferences(user?.id);
   const bt = useBluetoothEscposPrinter();
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,7 +69,7 @@ const AdminOrders: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // Notificação no Admin quando pedido virar CONFIRMED
+  // Notificações no Admin (preferências por usuário)
   useOrderNotifications(
     (newOrder) => {
     setNewOrderIds(prev => new Set([...prev, newOrder.id]));
@@ -78,7 +82,11 @@ const AdminOrders: React.FC = () => {
       });
     }, 30000);
     },
-    { playSound: false }
+    {
+      playSound: notifPrefs.play_sound,
+      notifyPending: notifPrefs.notify_pending,
+      notifyConfirmed: notifPrefs.notify_confirmed,
+    }
   );
 
   // Deep-link: /admin/pedidos?focus=<orderId>

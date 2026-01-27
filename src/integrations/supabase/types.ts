@@ -118,6 +118,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          notify_confirmed: boolean
+          notify_pending: boolean
+          play_sound: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_confirmed?: boolean
+          notify_pending?: boolean
+          play_sound?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_confirmed?: boolean
+          notify_pending?: boolean
+          play_sound?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_daily_counters: {
         Row: {
           last_seq: number
