@@ -137,6 +137,17 @@ const PaymentPage: React.FC = () => {
     toast.success('Código PIX copiado!');
   };
 
+  const copyOrderCode = async () => {
+    if (!orderId) return;
+    try {
+      await navigator.clipboard.writeText(orderId);
+      toast.success('Código do pedido copiado!');
+    } catch (error) {
+      console.error('Error copying order code:', error);
+      toast.error('Não foi possível copiar. Copie manualmente.');
+    }
+  };
+
   const confirmPixPayment = async () => {
     setIsProcessing(true);
     try {
@@ -573,6 +584,23 @@ const PaymentPage: React.FC = () => {
             <DialogDescription className="text-base">
               Seu pedido <span className="font-bold text-primary">{orderId.substring(0, 8).toUpperCase()}</span> foi recebido com sucesso.
             </DialogDescription>
+
+            <Alert className="mt-4 text-left">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Recomendado</AlertTitle>
+              <AlertDescription>
+                Copie e guarde o código do pedido para acompanhar depois pelo site.
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <code className="w-full rounded-md bg-muted px-2 py-1 text-xs font-mono text-foreground sm:w-auto">
+                    {orderId}
+                  </code>
+                  <Button type="button" variant="outline" onClick={copyOrderCode} className="w-full sm:w-auto">
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copiar código
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
 
             <div className="mt-6 p-4 bg-muted rounded-lg text-sm text-left">
               <p className="font-semibold mb-2">Resumo:</p>
