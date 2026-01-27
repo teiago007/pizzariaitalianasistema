@@ -22,6 +22,7 @@ type UpdateBody = {
   email?: string;
   password?: string;
   full_name?: string | null;
+  role?: "staff" | "entregador";
 };
 
 type DeleteBody = {
@@ -173,6 +174,9 @@ serve(async (req) => {
       const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : undefined;
       const password = body.password !== undefined ? String(body.password) : undefined;
       const fullName = body.full_name !== undefined ? ((body.full_name ?? null) as string | null) : undefined;
+      const role = body.role !== undefined ? (String(body.role).trim() as "staff" | "entregador") : undefined;
+
+      if (role !== undefined && role !== "staff" && role !== "entregador") return badRequest("Role inválido");
 
       if (email !== undefined && (!email || !isEmail(email))) return badRequest("Email inválido");
       if (password !== undefined && password.length > 0 && password.length < 6)
@@ -201,6 +205,30 @@ serve(async (req) => {
         if (profUpdErr) {
           console.error("manage-staff-user:update profile error", profUpdErr);
           return json({ error: "Erro ao atualizar perfil" }, 500);
+        }
+      }
+
+      if (role !== undefined) {
+        // Swap only between staff/entregador; never touch admin/user roles.
+        const { error: delRolesErr } = await adminClient
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId)
+          .in("role", ["staff", "entregador"]);
+
+        if (delRolesErr) {
+          console.error("manage-staff-user:update role delete error", delRolesErr);
+          return json({ error: "Erro ao atualizar permissões" }, 500);
+        }
+
+        const { error: insRoleErr } = await adminClient.from("user_roles").insert({
+          user_id: userId,
+          role,
+        });
+
+        if (insRoleErr) {
+          console.error("manage-staff-user:update role insert error", insRoleErr);
+          return json({ error: "Erro ao atualizar permissões" }, 500);
         }
       }
 

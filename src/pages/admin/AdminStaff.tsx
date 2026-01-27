@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -47,7 +48,7 @@ type ProfileRow = {
 type UserRoleRow = {
   id?: string;
   user_id: string;
-  role: "admin" | "user" | "staff";
+  role: "admin" | "user" | "staff" | "entregador";
 };
 
 type StaffForm = {
@@ -55,6 +56,7 @@ type StaffForm = {
   email: string;
   full_name: string;
   password: string;
+  role: "staff" | "entregador";
 };
 
 const AdminStaff: React.FC = () => {
@@ -63,7 +65,7 @@ const AdminStaff: React.FC = () => {
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [form, setForm] = useState<StaffForm>({ email: "", full_name: "", password: "" });
+  const [form, setForm] = useState<StaffForm>({ email: "", full_name: "", password: "", role: "staff" });
   const [submitting, setSubmitting] = useState(false);
 
   const { data: profiles, isLoading: loadingProfiles } = useQuery({
@@ -88,11 +90,12 @@ const AdminStaff: React.FC = () => {
   });
 
   const byUserId = useMemo(() => {
-    const map = new Map<string, { isAdmin: boolean; isStaff: boolean }>();
+    const map = new Map<string, { isAdmin: boolean; isStaff: boolean; isDeliverer: boolean }>();
     (roles || []).forEach((r) => {
-      const prev = map.get(r.user_id) || { isAdmin: false, isStaff: false };
+      const prev = map.get(r.user_id) || { isAdmin: false, isStaff: false, isDeliverer: false };
       if (r.role === "admin") prev.isAdmin = true;
       if (r.role === "staff") prev.isStaff = true;
+      if (r.role === "entregador") prev.isDeliverer = true;
       map.set(r.user_id, prev);
     });
     return map;
@@ -135,13 +138,15 @@ const AdminStaff: React.FC = () => {
 
   const openCreate = () => {
     setDialogMode("create");
-    setForm({ email: "", full_name: "", password: "" });
+    setForm({ email: "", full_name: "", password: "", role: "staff" });
     setDialogOpen(true);
   };
 
   const openEdit = (p: ProfileRow) => {
     setDialogMode("edit");
-    setForm({ user_id: p.user_id, email: p.email || "", full_name: p.full_name || "", password: "" });
+    const flags = byUserId.get(p.user_id);
+    const initialRole: "staff" | "entregador" = flags?.isDeliverer ? "entregador" : "staff";
+    setForm({ user_id: p.user_id, email: p.email || "", full_name: p.full_name || "", password: "", role: initialRole });
     setDialogOpen(true);
   };
 
@@ -156,6 +161,7 @@ const AdminStaff: React.FC = () => {
       const email = form.email.trim().toLowerCase();
       const full_name = form.full_name.trim();
       const password = form.password;
+      const role = form.role;
 
       if (!email || !email.includes("@")) throw new Error("Email inválido");
 
@@ -168,6 +174,7 @@ const AdminStaff: React.FC = () => {
             email,
             password,
             full_name: full_name || null,
+            role,
           },
         });
         if (error) throw error;
@@ -182,6 +189,7 @@ const AdminStaff: React.FC = () => {
             user_id: form.user_id,
             email,
             full_name: full_name || null,
+            role,
             ...(password ? { password } : {}),
           },
         });
@@ -261,6 +269,23 @@ const AdminStaff: React.FC = () => {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
+                    <Label>Tipo de usuário</Label>
+                    <Select
+                      value={form.role}
+                      onValueChange={(v) => setForm((s) => ({ ...s, role: (v as any) === "entregador" ? "entregador" : "staff" }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="staff">Funcionário (Staff)</SelectItem>
+                        <SelectItem value="entregador">Entregador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Você pode trocar entre Staff e Entregador aqui.</p>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>Email</Label>
                     <Input
                       value={form.email}
@@ -310,7 +335,7 @@ const AdminStaff: React.FC = () => {
             <p className="text-sm text-muted-foreground">Nenhum usuário encontrado.</p>
           ) : (
             filtered.map((p) => {
-              const flags = byUserId.get(p.user_id) || { isAdmin: false, isStaff: false };
+              const flags = byUserId.get(p.user_id) || { isAdmin: false, isStaff: false, isDeliverer: false };
               const disabled = flags.isAdmin;
 
               return (
@@ -325,6 +350,7 @@ const AdminStaff: React.FC = () => {
                         </Badge>
                       ) : null}
                       {flags.isStaff ? <Badge className="bg-secondary text-secondary-foreground">Staff</Badge> : null}
+                      {flags.isDeliverer ? <Badge className="bg-secondary text-secondary-foreground">Entregador</Badge> : null}
                     </div>
                     <p className="text-sm text-muted-foreground truncate">{p.email || "(email não informado)"}</p>
                     <p className="text-xs text-muted-foreground mt-1 break-all">user_id: {p.user_id}</p>
