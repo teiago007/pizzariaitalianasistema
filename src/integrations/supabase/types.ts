@@ -181,6 +181,7 @@ export type Database = {
           customer_street: string | null
           id: string
           items: Json
+          lookup_token: string
           needs_change: boolean | null
           order_origin: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -211,6 +212,7 @@ export type Database = {
           customer_street?: string | null
           id?: string
           items: Json
+          lookup_token: string
           needs_change?: boolean | null
           order_origin?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -241,6 +243,7 @@ export type Database = {
           customer_street?: string | null
           id?: string
           items?: Json
+          lookup_token?: string
           needs_change?: boolean | null
           order_origin?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
