@@ -13,7 +13,6 @@ import {
   Send,
   Trash2,
   Search,
-  Bluetooth,
   ExternalLink,
 } from 'lucide-react';
 import { useOrders } from '@/hooks/useOrders';
@@ -22,7 +21,7 @@ import { useOrderNotifications } from '@/hooks/useOrderNotifications';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { Order, OrderStatus, CartItemPizza } from '@/types';
-import { useBluetoothEscposPrinter } from '@/hooks/useBluetoothEscposPrinter';
+import { useUsbEscposPrinter } from '@/hooks/useUsbEscposPrinter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,7 +69,7 @@ const AdminOrders: React.FC = () => {
   const { settings } = useSettings();
   const { user } = useAdmin();
   const { prefs: notifPrefs } = useNotificationPreferences(user?.id);
-  const bt = useBluetoothEscposPrinter();
+  const usb = useUsbEscposPrinter();
   const showOpenInNewTab = React.useMemo(() => {
     try {
       return window.self !== window.top;
@@ -94,18 +93,86 @@ const AdminOrders: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
+  const markOrderPrinted = React.useCallback(
+    async (orderId: string) => {
+      if (!user?.id) return;
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          print_status: 'PRINTED',
+          printed_at: new Date().toISOString(),
+          printed_by: user.id,
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+    },
+    [user?.id]
+  );
+
+  const handlePrintUsb = React.useCallback(
+    async (order: Order, opts?: { silentIfNotConnected?: boolean; auto?: boolean }) => {
+      if (!usb.isConnected) {
+        if (!opts?.silentIfNotConnected) {
+          toast.error('Conecte a impressora USB para imprimir automaticamente.');
+        }
+        return false;
+      }
+
+      const ok = await usb.print58mm({
+        storeName: String(settings.name || ''),
+        storeAddress: settings.address || undefined,
+        order: {
+          id: order.id,
+          createdAt: order.createdAt,
+          seqOfDay: order.seqOfDay,
+          tableNumber: order.tableNumber,
+          customer: {
+            name: order.customer?.name,
+            phone: order.customer?.phone,
+            address: order.customer?.address,
+            complement: order.customer?.complement,
+          },
+          items: order.items,
+          total: order.total,
+          payment: {
+            method: order.payment?.method,
+            needsChange: order.payment?.needsChange,
+            changeFor: order.payment?.changeFor,
+          },
+        },
+      });
+
+      if (ok) {
+        try {
+          await markOrderPrinted(order.id);
+        } catch (e) {
+          console.error(e);
+          // não bloqueia a operação de impressão
+        }
+      }
+      return ok;
+    },
+    [markOrderPrinted, settings.address, settings.name, usb]
+  );
+
   // Notificações no Admin (preferências por usuário)
   useOrderNotifications(
     (newOrder) => {
-    setNewOrderIds(prev => new Set([...prev, newOrder.id]));
-    // Remove highlight after 30 seconds
-    setTimeout(() => {
-      setNewOrderIds(prev => {
-        const next = new Set(prev);
-        next.delete(newOrder.id);
-        return next;
-      });
-    }, 30000);
+      setNewOrderIds((prev) => new Set([...prev, newOrder.id]));
+      // Remove highlight after 30 seconds
+      setTimeout(() => {
+        setNewOrderIds((prev) => {
+          const next = new Set(prev);
+          next.delete(newOrder.id);
+          return next;
+        });
+      }, 30000);
+
+      // Auto-impressão: pedidos do site devem imprimir automaticamente quando chegarem.
+      if (newOrder.printStatus === 'PENDING' && newOrder.printSource === 'customer') {
+        void handlePrintUsb(newOrder, { silentIfNotConnected: false, auto: true });
+      }
     },
     {
       playSound: notifPrefs.play_sound,
@@ -275,159 +342,7 @@ const AdminOrders: React.FC = () => {
     await deleteOrder(orderId);
   };
 
-  const handlePrint = async (order: Order) => {
-    // Sequencial robusto do dia: vem pronto do backend no campo seqOfDay.
-    // (fallback: se for pedido antigo sem seq, tenta estimar por contagem)
-    let seqOfDay: number | undefined = order.seqOfDay;
-    if (typeof seqOfDay !== 'number') {
-      try {
-        const orderDateISO = dateISOInTZ(new Date(order.createdAt));
-        const dayStart = `${orderDateISO}T00:00:00-03:00`;
-        const orderTimeISO = new Date(order.createdAt).toISOString();
-
-        const { count, error } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .gte('created_at', dayStart)
-          .lt('created_at', orderTimeISO);
-
-        if (!error && typeof count === 'number') seqOfDay = count + 1;
-      } catch {
-        // ignore
-      }
-    }
-
-    const fmt = (n: number) => Number(n || 0).toFixed(2);
-    const hasLogo = Boolean((settings as any).logo);
-    const logoUrl = (settings as any).logo || '';
-
-    const itemsHtml = order.items
-      .map((item) => {
-        if (item.type === 'pizza') {
-          const pizza = item as any;
-          const flavors = (pizza.flavors || []).map((f: any) => f.name).join(' + ') || 'Pizza';
-          const border = pizza.border?.name ? ` • Borda ${pizza.border.name}` : '';
-          const obs = pizza.note ? `<div class="muted">Obs: ${escapeHtml(String(pizza.note))}</div>` : '';
-          return `
-            <div class="row">
-              <div class="qty">${pizza.quantity}x</div>
-              <div class="name">
-                <div class="title">Pizza ${escapeHtml(flavors)} (${escapeHtml(String(pizza.size))})</div>
-                ${border ? `<div class="muted">${escapeHtml(border.replace(/^\s*•\s*/, ''))}</div>` : ''}
-                ${obs}
-              </div>
-              <div class="price">R$ ${fmt(pizza.unitPrice * pizza.quantity)}</div>
-            </div>
-          `;
-        }
-        const p = (item as any).product;
-        return `
-          <div class="row">
-            <div class="qty">${item.quantity}x</div>
-            <div class="name"><div class="title">${escapeHtml(formatProductLabel(p))}</div></div>
-            <div class="price">R$ ${fmt(item.unitPrice * item.quantity)}</div>
-          </div>
-        `;
-      })
-      .join('');
-
-    const printContent = `
-      <html>
-        <head>
-          <title>Pedido ${order.id.substring(0, 8).toUpperCase()}</title>
-          <style>
-            :root { --paper: 80mm; --m: 3mm; --font: 11px; --font-sm: 10px; --font-lg: 14px; }
-            @page { size: var(--paper) auto; margin: var(--m); }
-            html, body { width: var(--paper); margin: 0; padding: 0; color: #000;
-              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-              font-size: var(--font);
-              -webkit-print-color-adjust: exact; print-color-adjust: exact;
-            }
-            .wrap { padding: var(--m); }
-            .center { text-align: center; }
-            .muted { color: #222; font-size: var(--font-sm); }
-            .hr { border-top: 1px dashed #000; margin: 8px 0; }
-            .logo { display: ${hasLogo ? 'block' : 'none'}; width: 100%; max-height: 20mm; object-fit: contain; margin: 0 auto 6px auto; }
-            .store { font-size: var(--font-lg); font-weight: 700; letter-spacing: 0.5px; }
-            .row { display: grid; grid-template-columns: 10mm 1fr auto; gap: 6px; align-items: start; margin: 6px 0; }
-            .qty { font-weight: 700; }
-            .title { font-weight: 700; }
-            .price { font-weight: 700; white-space: nowrap; text-align: right; }
-            .totals { margin-top: 10px; padding-top: 8px; border-top: 2px dashed #000; }
-            .total-line { display: flex; justify-content: space-between; font-size: var(--font-lg); font-weight: 800; }
-          </style>
-        </head>
-        <body>
-          <div class="wrap">
-            <img class="logo" src="${escapeHtml(String(logoUrl))}" alt="Logo" />
-            <div class="center store">${escapeHtml(String(settings.name || ''))}</div>
-            <div class="center muted">${escapeHtml(String(settings.address || ''))}</div>
-
-            <div class="hr"></div>
-            <div>
-              <div><strong>Pedido:</strong> ${order.id.substring(0, 8).toUpperCase()}</div>
-              ${seqOfDay ? `<div><strong>Seq. do dia:</strong> ${seqOfDay}</div>` : ''}
-              ${order.tableNumber ? `<div><strong>Mesa/Comanda:</strong> ${escapeHtml(String(order.tableNumber))}</div>` : ''}
-              <div><strong>Data:</strong> ${escapeHtml(new Date(order.createdAt).toLocaleString('pt-BR'))}</div>
-              <div><strong>Pagamento:</strong> ${escapeHtml(String(paymentLabels[order.payment.method]))}</div>
-              ${order.payment.needsChange ? `<div><strong>Troco para:</strong> R$ ${fmt(order.payment.changeFor || 0)}</div>` : ''}
-            </div>
-
-            <div class="hr"></div>
-            <div><strong>Cliente</strong></div>
-            <div>${escapeHtml(order.customer.name)}</div>
-            <div class="muted">${escapeHtml(order.customer.phone)}</div>
-            <div class="muted">${escapeHtml(order.customer.address)}</div>
-            ${order.customer.complement ? `<div class="muted">${escapeHtml(order.customer.complement)}</div>` : ''}
-
-            <div class="hr"></div>
-            <div><strong>Itens</strong></div>
-            ${itemsHtml}
-
-            <div class="totals">
-              <div class="total-line"><span>TOTAL</span><span>R$ ${fmt(order.total)}</span></div>
-            </div>
-
-            <div class="hr"></div>
-            <div class="center muted">Obrigado pela preferência!</div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
-  const handlePrintBluetooth58 = async (order: Order) => {
-    await bt.print58mm({
-      storeName: String(settings.name || ''),
-      storeAddress: settings.address || undefined,
-      order: {
-        id: order.id,
-        createdAt: order.createdAt,
-        seqOfDay: order.seqOfDay,
-        tableNumber: order.tableNumber,
-        customer: {
-          name: order.customer?.name,
-          phone: order.customer?.phone,
-          address: order.customer?.address,
-          complement: order.customer?.complement,
-        },
-        items: order.items,
-        total: order.total,
-        payment: {
-          method: order.payment?.method,
-          needsChange: order.payment?.needsChange,
-          changeFor: order.payment?.changeFor,
-        },
-      },
-    });
-  };
+  // Impressão agora é apenas via USB (WebUSB)
 
   const OrderDetails: React.FC<{ order: Order }> = ({ order }) => (
     <div className="space-y-4">
@@ -552,25 +467,25 @@ const AdminOrders: React.FC = () => {
               Abrir em nova aba (impressão)
             </Button>
           ) : null}
-          <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
-            <Bluetooth className="w-4 h-4" />
-            {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
+          <Button variant="outline" onClick={usb.connect} disabled={usb.connecting}>
+            <Printer className="w-4 h-4" />
+            {usb.connecting ? 'Conectando...' : 'Conectar USB (Elgin)'}
           </Button>
-          {bt.isConnected ? (
-            <Button variant="outline" onClick={bt.disconnect}>
+          {usb.isConnected ? (
+            <Button variant="outline" onClick={usb.disconnect}>
               Desconectar
             </Button>
           ) : null}
 
-            <Button
-              variant="outline"
-              onClick={() => bt.printTest58mm({ storeName: String(settings.name || ''), storeAddress: settings.address || undefined })}
-              disabled={!bt.isConnected}
-              title={bt.isConnected ? 'Testar impressão Bluetooth (58mm)' : 'Conecte Bluetooth para testar'}
-            >
-              <Printer className="w-4 h-4" />
-              Testar impressão (58mm)
-            </Button>
+          <Button
+            variant="outline"
+            onClick={() => usb.printTest58mm({ storeName: String(settings.name || ''), storeAddress: settings.address || undefined })}
+            disabled={!usb.isConnected}
+            title={usb.isConnected ? 'Testar impressão USB' : 'Conecte USB para testar'}
+          >
+            <Printer className="w-4 h-4" />
+            Testar impressão
+          </Button>
         </div>
       </div>
 
@@ -655,6 +570,9 @@ const AdminOrders: React.FC = () => {
                                   </Badge>
                                 )}
                                 <span className="font-bold text-lg">{order.id.substring(0, 8).toUpperCase()}</span>
+                                {order.printStatus === 'PENDING' ? (
+                                  <Badge variant="outline">Para imprimir</Badge>
+                                ) : null}
                                 <Badge className={`${status.color} text-white`}>
                                   <StatusIcon className="w-3 h-3 mr-1" />
                                   {status.label}
@@ -739,18 +657,14 @@ const AdminOrders: React.FC = () => {
                                 <MessageCircle className="w-4 h-4" />
                               </Button>
 
-                              <Button variant="outline" size="icon" onClick={() => handlePrint(order)} title="Imprimir pedido">
-                                <Printer className="w-4 h-4" />
-                              </Button>
-
                               <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => handlePrintBluetooth58(order)}
-                                title={bt.isConnected ? 'Imprimir Bluetooth (58mm)' : 'Conecte Bluetooth para imprimir'}
-                                disabled={!bt.isConnected}
+                                onClick={() => handlePrintUsb(order)}
+                                title={usb.isConnected ? 'Imprimir (USB)' : 'Conecte USB para imprimir'}
+                                disabled={!usb.isConnected}
                               >
-                                <Bluetooth className="w-4 h-4" />
+                                <Printer className="w-4 h-4" />
                               </Button>
 
                               {/* Delete Order Button */}

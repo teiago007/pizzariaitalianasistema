@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderStatus, CartItem, CustomerInfo, PaymentMethod } from '@/types';
+import { Order, OrderStatus, CartItem, CustomerInfo, PaymentMethod, PrintStatus, PrintSource } from '@/types';
 import { toast } from 'sonner';
 
 export type UseOrdersOptions = {
@@ -32,6 +32,12 @@ interface DbOrder {
   table_number?: string | null;
   created_by_user_id?: string | null;
   seq_of_day?: number | null;
+  print_status?: string | null;
+  print_source?: string | null;
+  print_requested_at?: string | null;
+  print_requested_by?: string | null;
+  printed_at?: string | null;
+  printed_by?: string | null;
   items: any;
   payment_method: string;
   needs_change: boolean | null;
@@ -67,6 +73,12 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
   orderOrigin: dbOrder.order_origin || undefined,
   tableNumber: dbOrder.table_number || undefined,
   createdByUserId: dbOrder.created_by_user_id || undefined,
+  printStatus: (dbOrder.print_status as PrintStatus | null) || undefined,
+  printSource: (dbOrder.print_source as PrintSource | null) || undefined,
+  printRequestedAt: dbOrder.print_requested_at ? new Date(dbOrder.print_requested_at) : undefined,
+  printRequestedBy: dbOrder.print_requested_by || undefined,
+  printedAt: dbOrder.printed_at ? new Date(dbOrder.printed_at) : undefined,
+  printedBy: dbOrder.printed_by || undefined,
   createdAt: new Date(dbOrder.created_at),
   updatedAt: new Date(dbOrder.updated_at),
 });
@@ -85,6 +97,12 @@ const ORDERS_SELECT = [
   'table_number',
   'created_by_user_id',
   'seq_of_day',
+  'print_status',
+  'print_source',
+  'print_requested_at',
+  'print_requested_by',
+  'printed_at',
+  'printed_by',
   'items',
   'payment_method',
   'needs_change',
@@ -247,6 +265,9 @@ export function useOrders(options: UseOrdersOptions = {}) {
           change_for: changeFor || null,
           total: total,
           status: initialStatus,
+          print_status: 'PENDING',
+          print_source: 'customer',
+          print_requested_at: new Date().toISOString(),
         })
         .select()
         .single();

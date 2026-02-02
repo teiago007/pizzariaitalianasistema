@@ -185,6 +185,12 @@ export type Database = {
           order_origin: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id: string | null
+          print_requested_at: string | null
+          print_requested_by: string | null
+          print_source: string | null
+          print_status: string | null
+          printed_at: string | null
+          printed_by: string | null
           seq_of_day: number | null
           status: Database["public"]["Enums"]["order_status"]
           table_number: string | null
@@ -209,6 +215,12 @@ export type Database = {
           order_origin?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id?: string | null
+          print_requested_at?: string | null
+          print_requested_by?: string | null
+          print_source?: string | null
+          print_status?: string | null
+          printed_at?: string | null
+          printed_by?: string | null
           seq_of_day?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null
@@ -233,6 +245,12 @@ export type Database = {
           order_origin?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           pix_transaction_id?: string | null
+          print_requested_at?: string | null
+          print_requested_by?: string | null
+          print_source?: string | null
+          print_status?: string | null
+          printed_at?: string | null
+          printed_by?: string | null
           seq_of_day?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null

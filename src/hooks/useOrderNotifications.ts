@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderStatus, PaymentMethod, CartItem } from '@/types';
+import { Order, OrderStatus, PaymentMethod, CartItem, PrintSource, PrintStatus } from '@/types';
 import { toast } from 'sonner';
 
 interface DbOrder {
@@ -15,6 +15,12 @@ interface DbOrder {
   change_for: number | null;
   total: number;
   status: string;
+  print_status?: string | null;
+  print_source?: string | null;
+  print_requested_at?: string | null;
+  print_requested_by?: string | null;
+  printed_at?: string | null;
+  printed_by?: string | null;
   pix_transaction_id: string | null;
   created_at: string;
   updated_at: string;
@@ -36,6 +42,12 @@ const mapDbToOrder = (dbOrder: DbOrder): Order => ({
   },
   total: Number(dbOrder.total),
   status: dbOrder.status as OrderStatus,
+  printStatus: (dbOrder.print_status as PrintStatus | null) || undefined,
+  printSource: (dbOrder.print_source as PrintSource | null) || undefined,
+  printRequestedAt: dbOrder.print_requested_at ? new Date(dbOrder.print_requested_at) : undefined,
+  printRequestedBy: dbOrder.print_requested_by || undefined,
+  printedAt: dbOrder.printed_at ? new Date(dbOrder.printed_at) : undefined,
+  printedBy: dbOrder.printed_by || undefined,
   createdAt: new Date(dbOrder.created_at),
   updatedAt: new Date(dbOrder.updated_at),
 });
