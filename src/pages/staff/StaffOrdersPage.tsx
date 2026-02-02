@@ -1,13 +1,12 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Eye, Printer, Bluetooth, ExternalLink } from "lucide-react";
+import { Loader2, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders } from "@/hooks/useOrders";
 import { useStaff } from "@/contexts/StaffContext";
 import { useStore } from "@/contexts/StoreContext";
 import { useSettings } from "@/hooks/useSettings";
-import { useBluetoothEscposPrinter } from "@/hooks/useBluetoothEscposPrinter";
 import type { Order, CartItemPizza } from "@/types";
 import { PizzaCard } from "@/components/public/PizzaCard";
 import { ProductCard } from "@/components/public/ProductCard";
@@ -17,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
+// Impressão removida do módulo do funcionário; apenas Admin imprime via USB.
 
 type DbCategory = {
   id: string;
@@ -64,19 +63,7 @@ const StaffOrdersPage: React.FC = () => {
   }, [user?.id]);
 
   const { orders: myOrders, loading: loadingOrders } = useOrders(ordersQueryOptions);
-  const { settings } = useSettings();
-  const bt = useBluetoothEscposPrinter();
-  const showOpenInNewTab = React.useMemo(() => {
-    try {
-      return window.self !== window.top;
-    } catch {
-      return true;
-    }
-  }, []);
-
-  const openInNewTab = React.useCallback(() => {
-    window.open(window.location.href, "_blank", "noopener,noreferrer");
-  }, []);
+  useSettings();
   const { flavors, products, isLoadingFlavors, isLoadingProducts } = useStore();
 
   const { data: pizzaCategories = [] } = useQuery({
@@ -131,134 +118,9 @@ const StaffOrdersPage: React.FC = () => {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
-  const handlePrintOrder = (order: Order) => {
-    const fmt = (n: number) => Number(n || 0).toFixed(2);
-    const hasLogo = Boolean(settings.logo);
+  // (Impressão removida)
 
-    const itemsHtml = order.items
-      .map((item) => {
-        if (item.type === "pizza") {
-          const pizza = item as any;
-          const flavors = (pizza.flavors || []).map((f: any) => f.name).join(" + ") || "Pizza";
-          const border = pizza.border?.name ? ` • Borda ${pizza.border.name}` : "";
-          const obs = pizza.note ? `<div class="muted">Obs: ${escapeHtml(String(pizza.note))}</div>` : "";
-          return `
-            <div class="row">
-              <div class="qty">${pizza.quantity}x</div>
-              <div class="name">
-                <div class="title">Pizza ${escapeHtml(flavors)} (${escapeHtml(String(pizza.size))})</div>
-                ${border ? `<div class="muted">${escapeHtml(border.replace(/^\s*•\s*/, ""))}</div>` : ""}
-                ${obs}
-              </div>
-              <div class="price">R$ ${fmt(pizza.unitPrice * pizza.quantity)}</div>
-            </div>
-          `;
-        }
-        const p = (item as any).product;
-        const isSoda = String(p?.category || '').toLowerCase() === 'refrigerantes';
-        const explicitSize = p?.drinkSizeName as string | null | undefined;
-        const legacySize = parseDrinkSize(String(p?.name || ''));
-        const size = explicitSize || legacySize;
-        const baseName = isSoda
-          ? (explicitSize ? String(p?.name || 'Produto') : legacySize ? stripDrinkSize(String(p?.name || '')) : String(p?.name || 'Produto'))
-          : String(p?.name || 'Produto');
-        return `
-          <div class="row">
-            <div class="qty">${item.quantity}x</div>
-            <div class="name">
-              <div class="title">${escapeHtml(baseName)}</div>
-              ${isSoda && size ? `<div class="muted">${escapeHtml(String(size))}</div>` : ''}
-            </div>
-            <div class="price">R$ ${fmt(item.unitPrice * item.quantity)}</div>
-          </div>
-        `;
-      })
-      .join("");
-
-    const printContent = `
-      <html>
-        <head>
-          <title>Pedido ${order.id.substring(0, 8).toUpperCase()}</title>
-          <style>
-            :root { --paper: 80mm; --m: 3mm; --font: 11px; --font-sm: 10px; --font-lg: 14px; }
-            @page { size: var(--paper) auto; margin: var(--m); }
-            html, body { width: var(--paper); margin: 0; padding: 0; color: #000;
-              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-              font-size: var(--font);
-              -webkit-print-color-adjust: exact; print-color-adjust: exact;
-            }
-            .wrap { padding: var(--m); }
-            .center { text-align: center; }
-            .muted { color: #222; font-size: var(--font-sm); }
-            .hr { border-top: 1px dashed #000; margin: 8px 0; }
-            .logo { display: ${hasLogo ? "block" : "none"}; width: 100%; max-height: 20mm; object-fit: contain; margin: 0 auto 6px auto; }
-            .store { font-size: var(--font-lg); font-weight: 700; letter-spacing: 0.5px; }
-            .row { display: grid; grid-template-columns: 10mm 1fr auto; gap: 6px; align-items: start; margin: 6px 0; }
-            .qty { font-weight: 700; }
-            .title { font-weight: 700; }
-            .price { font-weight: 700; white-space: nowrap; text-align: right; }
-            .totals { margin-top: 10px; padding-top: 8px; border-top: 2px dashed #000; }
-            .total-line { display: flex; justify-content: space-between; font-size: var(--font-lg); font-weight: 800; }
-          </style>
-        </head>
-        <body>
-          <div class="wrap">
-            <img class="logo" src="${settings.logo || ""}" alt="Logo" />
-            <div class="center store">${escapeHtml(settings.name)}</div>
-            <div class="center muted">${escapeHtml(settings.address || "")}</div>
-
-            <div class="hr"></div>
-            <div>
-              <div><strong>Pedido:</strong> ${order.id.substring(0, 8).toUpperCase()}</div>
-              ${typeof order.seqOfDay === "number" ? `<div><strong>Seq. do dia:</strong> ${order.seqOfDay}</div>` : ""}
-              ${order.tableNumber ? `<div><strong>Mesa/Comanda:</strong> ${escapeHtml(String(order.tableNumber))}</div>` : ""}
-              <div><strong>Data:</strong> ${escapeHtml(new Date(order.createdAt).toLocaleString("pt-BR"))}</div>
-              <div><strong>Pagamento:</strong> ${escapeHtml(
-                order.payment.method === "pix" ? "PIX" : order.payment.method === "cash" ? "Dinheiro" : "Cartão"
-              )}</div>
-            </div>
-
-            <div class="hr"></div>
-            <div><strong>Itens</strong></div>
-            ${itemsHtml}
-
-            <div class="totals">
-              <div class="total-line"><span>TOTAL</span><span>R$ ${fmt(order.total)}</span></div>
-            </div>
-
-            <div class="hr"></div>
-            <div class="center muted">Obrigado!</div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.print();
-    } else {
-      toast.error("Bloqueio de popup - permita no navegador.");
-    }
-  };
-
-  const handleBluetoothPrint58 = async (order: Order) => {
-    await bt.print58mm({
-      storeName: String(settings.name || ''),
-      storeAddress: settings.address || undefined,
-      order: {
-        id: order.id,
-        createdAt: order.createdAt,
-        seqOfDay: order.seqOfDay,
-        tableNumber: order.tableNumber,
-        // pedido do staff não precisa de dados de entrega
-        items: order.items,
-        total: order.total,
-        payment: { method: order.payment?.method },
-      },
-    });
-  };
+  // Impressão agora é feita apenas no Admin (USB).
 
   const OrderDetailsStaff: React.FC<{ order: Order }> = ({ order }) => (
     <div className="space-y-4">
@@ -361,26 +223,6 @@ const StaffOrdersPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {showOpenInNewTab ? (
-              <Button variant="outline" onClick={openInNewTab}>
-                <ExternalLink className="w-4 h-4" />
-                Abrir em nova aba (impressão)
-              </Button>
-            ) : null}
-            <Button variant="outline" onClick={bt.connect} disabled={bt.connecting}>
-              <Bluetooth className="w-4 h-4" />
-              {bt.connecting ? 'Conectando...' : 'Conectar Bluetooth (58mm)'}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => bt.printTest58mm({ storeName: String(settings.name || ''), storeAddress: settings.address || undefined })}
-              disabled={!bt.isConnected}
-              title={bt.isConnected ? 'Testar impressão Bluetooth (58mm)' : 'Conecte Bluetooth para testar'}
-            >
-              <Printer className="w-4 h-4" />
-              Testar impressão
-            </Button>
             <Link to="/funcionario/carrinho">
               <Button variant="outline">Ver carrinho</Button>
             </Link>
@@ -524,19 +366,7 @@ const StaffOrdersPage: React.FC = () => {
                             </DialogContent>
                           </Dialog>
 
-                          <Button variant="outline" size="icon" onClick={() => handlePrintOrder(order)} title="Imprimir">
-                            <Printer className="w-4 h-4" />
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleBluetoothPrint58(order)}
-                            title={bt.isConnected ? 'Imprimir Bluetooth (58mm)' : 'Conecte Bluetooth para imprimir'}
-                            disabled={!bt.isConnected}
-                          >
-                            <Bluetooth className="w-4 h-4" />
-                          </Button>
+                          {/* Impressão é feita apenas no Admin (USB) */}
                         </div>
                       </div>
                     </CardContent>

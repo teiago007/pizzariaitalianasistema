@@ -64,6 +64,9 @@ export type PaymentMethod = 'pix' | 'cash' | 'card';
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
+export type PrintStatus = 'PENDING' | 'PRINTED';
+export type PrintSource = 'customer' | 'staff';
+
 export interface CartItemPizza {
   type: 'pizza';
   id: string;
@@ -122,6 +125,14 @@ export interface Order {
   tableNumber?: string;
   /** Usuário autenticado que criou o pedido (ex: staff) */
   createdByUserId?: string;
+  /** Fluxo de impressão (Admin) */
+  printStatus?: PrintStatus;
+  /** Origem do pedido para regras de auto-impressão */
+  printSource?: PrintSource;
+  printRequestedAt?: Date;
+  printRequestedBy?: string;
+  printedAt?: Date;
+  printedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
